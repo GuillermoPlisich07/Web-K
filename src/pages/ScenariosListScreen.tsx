@@ -4,8 +4,9 @@ import { Scenario, ClientPersona, Difficulty, Industry } from "../types";
 import { useSessionStore } from "../store/sessionStore";
 import { useRole } from "../context/RoleContext";
 import { getVendorName, setVendorName as persistVendorName } from "../lib/identity";
+import { apiFetch } from "../services/apiClient";
+import { isReadOnlyRole } from "../lib/permissions";
 
-const SPRING_URL = import.meta.env.VITE_SPRING_URL ?? "http://localhost:8080";
 const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL ?? "http://localhost:8000";
 
 const personaBadge: Record<ClientPersona, { label: string; color: string }> = {
@@ -91,7 +92,7 @@ export default function ScenariosListScreen() {
   const [startError, setStartError] = useState("");
 
   useEffect(() => {
-    fetch(`${SPRING_URL}/api/scenarios`)
+    apiFetch("/api/scenarios")
       .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then((data) => { setScenarios(data); setLoading(false); })
       .catch(() => { setError("No se pudo conectar con el servidor."); setLoading(false); });
@@ -118,7 +119,7 @@ export default function ScenariosListScreen() {
     setStartError("");
     persistVendorName(vendorName.trim());
     try {
-      const sessionRes = await fetch(`${SPRING_URL}/api/sessions`, {
+      const sessionRes = await apiFetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scenarioId: trainModal.id, vendorName: vendorName.trim() }),
@@ -128,17 +129,24 @@ export default function ScenariosListScreen() {
 
       const startRes = await fetch(`${FASTAPI_URL}/session/start`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session.delegatedToken ? { Authorization: `Bearer ${session.delegatedToken}` } : {}),
+        },
         body: JSON.stringify({
           session_id: session.id,
           scenario_id: trainModal.id,
           vendor_name: vendorName.trim(),
         }),
       });
+      if (startRes.status === 401) {
+        setStartError("No se pudo autenticar la sesión de entrenamiento. Intentá de nuevo.");
+        return;
+      }
       const startData = startRes.ok ? await startRes.json() : {};
       reset();
       setTavusUrl(startData.conversation_url ?? null);
-      setSession(session.id, trainModal.id, vendorName.trim());
+      setSession(session.id, trainModal.id, vendorName.trim(), session.delegatedToken ?? null);
       navigate("/session");
     } catch {
       setStartError("Error al iniciar. Verificá que los servidores estén corriendo.");
@@ -151,7 +159,7 @@ export default function ScenariosListScreen() {
     if (!deleteModal) return;
     setDeleting(true);
     try {
-      const res = await fetch(`${SPRING_URL}/api/scenarios/${deleteModal.id}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/scenarios/${deleteModal.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
       setScenarios((prev) => prev.filter((s) => s.id !== deleteModal.id));
       setDeleteModal(null);
@@ -187,12 +195,14 @@ export default function ScenariosListScreen() {
                 Limpiar ✕
               </button>
             )}
-            <button
-              onClick={() => navigate(role === "employee" ? "/scenarios/new/express" : "/scenarios/new")}
-              className="bg-accent hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg px-4 py-2 transition-colors"
-            >
-              + Nuevo escenario
-            </button>
+            {!isReadOnlyRole(role) && (
+              <button
+                onClick={() => navigate(role === "employee" ? "/scenarios/new/express" : "/scenarios/new")}
+                className="bg-accent hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg px-4 py-2 transition-colors"
+              >
+                + Nuevo escenario
+              </button>
+            )}
           </div>
         </div>
 
@@ -229,8 +239,8 @@ export default function ScenariosListScreen() {
                 key={scenario.id}
                 scenario={scenario}
                 onTrain={() => { setTrainModal(scenario); setVendorName(""); setStartError(""); }}
-                onEdit={role === "employee" ? undefined : () => navigate(`/scenarios/${scenario.id}/edit`)}
-                onDelete={scenario.createdBy === "EXPRESS_AI" ? () => setDeleteModal(scenario) : undefined}
+                onEdit={role === "admin" ? () => navigate(`/scenarios/${scenario.id}/edit`) : undefined}
+                onDelete={role === "admin" && scenario.createdBy === "EXPRESS_AI" ? () => setDeleteModal(scenario) : undefined}
               />
             ))}
           </div>

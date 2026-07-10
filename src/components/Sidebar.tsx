@@ -1,9 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { LogOut, Flame, ChevronRight } from "lucide-react";
-import { NAV_ITEMS, NAV_SECTIONS, isNavItemActive, type Role } from "../config/nav";
-
-const GRAD =
-  "linear-gradient(135deg, #F5C518 0%, #FF6130 28%, #E0177A 56%, #7B22B4 78%, #4050C8 100%)";
+import { NAV_ITEMS, NAV_SECTIONS, isNavItemActive, isNavItemVisible, type Role } from "../config/nav";
+import { GRAD } from "../lib/theme";
 
 interface Props {
   role: Role;
@@ -12,7 +10,7 @@ interface Props {
 
 export default function Sidebar({ role, onLogout }: Props) {
   const location = useLocation();
-  const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || role === "admin");
+  const visibleItems = NAV_ITEMS.filter((item) => isNavItemVisible(item, role));
 
   return (
     <aside

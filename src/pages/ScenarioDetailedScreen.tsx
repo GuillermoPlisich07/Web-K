@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ClientPersona, Difficulty, Industry } from "../types";
+import { apiFetch } from "../services/apiClient";
 
-const SPRING_URL  = import.meta.env.VITE_SPRING_URL ?? "http://localhost:8080";
 const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL ?? "http://localhost:8000";
 
 type SectionKey = "identity" | "product" | "persona" | "objections" | "faq" | "evaluation" | "voice" | "preview";
@@ -106,7 +106,7 @@ export default function ScenarioDetailedScreen() {
 
   useEffect(() => {
     if (!isEdit || !id) return;
-    fetch(`${SPRING_URL}/api/scenarios/${id}`)
+    apiFetch(`/api/scenarios/${id}`)
       .then(r => r.json())
       .then(s => {
         setName(s.name ?? "");
@@ -163,9 +163,9 @@ export default function ScenarioDetailedScreen() {
     setSaving(true);
     setError("");
     try {
-      const url    = scenarioId ? `${SPRING_URL}/api/scenarios/${scenarioId}` : `${SPRING_URL}/api/scenarios`;
+      const url    = scenarioId ? `/api/scenarios/${scenarioId}` : "/api/scenarios";
       const method = scenarioId ? "PUT" : "POST";
-      const res    = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildBody()) });
+      const res    = await apiFetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildBody()) });
       if (!res.ok) throw new Error();
       const saved = await res.json();
       setScenarioId(saved.id);
@@ -181,7 +181,7 @@ export default function ScenarioDetailedScreen() {
     if (scenarioId) return scenarioId;
     if (!name.trim() || !clientPersona || !difficulty) return null;
     try {
-      const res = await fetch(`${SPRING_URL}/api/scenarios`, {
+      const res = await apiFetch("/api/scenarios", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(buildBody()),
@@ -202,7 +202,7 @@ export default function ScenarioDetailedScreen() {
         sid = await ensureId();
         if (!sid) { setError("Completá nombre, tipo de cliente y dificultad antes de usar IA."); return; }
       }
-      const res = await fetch(`${SPRING_URL}/api/scenarios/${sid}/regenerate-section`, {
+      const res = await apiFetch(`/api/scenarios/${sid}/regenerate-section`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ section }),

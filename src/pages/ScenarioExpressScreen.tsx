@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ClientPersona, Difficulty, Industry, Scenario } from "../types";
 import { getVendorName, setVendorName } from "../lib/identity";
-
-const SPRING_URL = import.meta.env.VITE_SPRING_URL ?? "http://localhost:8080";
+import { apiFetch } from "../services/apiClient";
 
 type Step = "form" | "loading" | "review";
 
@@ -101,7 +100,7 @@ export default function ScenarioExpressScreen() {
     setStep("loading");
     setApiError("");
     try {
-      const res = await fetch(`${SPRING_URL}/api/scenarios/express`, {
+      const res = await apiFetch("/api/scenarios/express", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -138,7 +137,7 @@ export default function ScenarioExpressScreen() {
     setRegenLoading(section);
     setRegenError("");
     try {
-      const res = await fetch(`${SPRING_URL}/api/scenarios/${scenario.id}/regenerate-section`, {
+      const res = await apiFetch(`/api/scenarios/${scenario.id}/regenerate-section`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ section }),
@@ -160,7 +159,7 @@ export default function ScenarioExpressScreen() {
     if (!scenario) return;
     setSaving(true);
     try {
-      await fetch(`${SPRING_URL}/api/scenarios/${scenario.id}`, {
+      await apiFetch(`/api/scenarios/${scenario.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

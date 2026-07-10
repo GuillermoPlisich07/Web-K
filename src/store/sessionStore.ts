@@ -18,8 +18,10 @@ interface SessionStore {
   isAvatarSpeaking: boolean;
   elapsedSeconds: number;
   tavusConversationUrl: string | null;
+  /** Core-k-issued delegated token presented directly to AI-Service-k (add-service-auth). */
+  delegatedToken: string | null;
 
-  setSession: (id: string, scenarioId: string, vendorName: string) => void;
+  setSession: (id: string, scenarioId: string, vendorName: string, delegatedToken: string | null) => void;
   addTranscriptEntry: (entry: TranscriptEntry) => void;
   setCurrentEmotion: (emotion: string | null) => void;
   setIsRecording: (v: boolean) => void;
@@ -40,9 +42,10 @@ export const useSessionStore = create<SessionStore>((set) => ({
   isAvatarSpeaking: false,
   elapsedSeconds: 0,
   tavusConversationUrl: null,
+  delegatedToken: null,
 
-  setSession: (id, scenarioId, vendorName) =>
-    set({ sessionId: id, scenarioId, vendorName, status: "active" }),
+  setSession: (id, scenarioId, vendorName, delegatedToken) =>
+    set({ sessionId: id, scenarioId, vendorName, delegatedToken, status: "active" }),
   addTranscriptEntry: (entry) =>
     set((s) => ({ transcript: [...s.transcript, entry] })),
   setCurrentEmotion: (emotion) => set({ currentEmotion: emotion }),
@@ -55,6 +58,6 @@ export const useSessionStore = create<SessionStore>((set) => ({
       sessionId: null, scenarioId: null, vendorName: "",
       status: "idle", transcript: [], currentEmotion: null,
       isRecording: false, isAvatarSpeaking: false, elapsedSeconds: 0,
-      tavusConversationUrl: null,
+      tavusConversationUrl: null, delegatedToken: null,
     }),
 }));

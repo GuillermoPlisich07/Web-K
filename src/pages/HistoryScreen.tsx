@@ -1,15 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Session } from "../types";
-
-const SPRING_URL = import.meta.env.VITE_SPRING_URL ?? "http://localhost:8080";
+import { apiFetch } from "../services/apiClient";
 
 export default function HistoryScreen() {
   const navigate = useNavigate();
   const [sessions, setSessions] = useState<Session[]>([]);
 
   useEffect(() => {
-    fetch(`${SPRING_URL}/api/sessions`)
+    apiFetch("/api/sessions")
       .then((r) => r.json())
       .then(setSessions)
       .catch(console.error);

@@ -1,26 +1,60 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, AlertCircle } from "lucide-react";
+import { login, LoginError } from "../services/apiClient";
+import { useAuthStore } from "../store/authStore";
+import type { Role } from "../config/nav";
 
 const GRAD =
   "linear-gradient(135deg, #F5C518 0%, #FF6130 28%, #E0177A 56%, #7B22B4 78%, #4050C8 100%)";
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type FieldErrors = { email?: string; password?: string };
+
 export default function LoginPage() {
   const navigate = useNavigate();
+  const setSession = useAuthStore((s) => s.setSession);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const handleLogin = () => navigate("/");
+  const validate = (): boolean => {
+    const errors: FieldErrors = {};
+    if (!email.trim()) errors.email = "Ingresá tu email";
+    else if (!EMAIL_PATTERN.test(email.trim())) errors.email = "Ingresá un email válido";
+    if (!password) errors.password = "Ingresá tu contraseña";
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+    if (!validate()) return;
+
     setLoading(true);
-    setTimeout(() => {
+    try {
+      const data = await login(email.trim(), password);
+      setSession({
+        accessToken: data.accessToken,
+        role: data.role as Role,
+        email: data.email,
+        profileCompleted: data.profileCompleted,
+      });
+      navigate("/", { replace: true });
+    } catch (err) {
+      if (err instanceof LoginError) {
+        setFormError(err.message);
+      } else {
+        setFormError("No se pudo iniciar sesión. Intentá de nuevo.");
+      }
+    } finally {
       setLoading(false);
-      handleLogin();
-    }, 900);
+    }
   };
 
   return (
@@ -116,29 +150,46 @@ export default function LoginPage() {
             <div className="flex-1 h-px" style={{ backgroundColor: "rgba(255,255,255,0.08)" }} />
           </div> */}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
+            {formError && (
+              <div
+                role="alert"
+                className="flex items-start gap-2 px-3 py-2.5 rounded-lg text-xs"
+                style={{ backgroundColor: "rgba(224,23,122,0.1)", border: "1px solid rgba(224,23,122,0.35)", color: "#F5A8CB" }}
+              >
+                <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
+                <span>{formError}</span>
+              </div>
+            )}
             <div>
-              <label className="block text-[#B7C0D0] text-xs font-medium mb-2 uppercase tracking-wider">
+              <label htmlFor="login-email" className="block text-[#B7C0D0] text-xs font-medium mb-2 uppercase tracking-wider">
                 Email
               </label>
               <input
+                id="login-email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (fieldErrors.email) setFieldErrors((f) => ({ ...f, email: undefined }));
+                }}
+                aria-invalid={Boolean(fieldErrors.email)}
                 className="w-full px-4 py-3 rounded-lg text-sm text-white outline-none transition-all duration-150"
                 style={{
                   backgroundColor: "#151D2B",
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  border: `1px solid ${fieldErrors.email ? "#E0177A" : "rgba(255,255,255,0.08)"}`,
                   caretColor: "#F5C518",
                 }}
                 onFocus={(e) => (e.target.style.borderColor = "rgba(245,197,24,0.4)")}
-                onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.08)")}
+                onBlur={(e) => (e.target.style.borderColor = fieldErrors.email ? "#E0177A" : "rgba(255,255,255,0.08)")}
               />
+              {fieldErrors.email && (
+                <p className="text-xs mt-1.5" style={{ color: "#F5A8CB" }}>{fieldErrors.email}</p>
+              )}
             </div>
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="text-[#B7C0D0] text-xs font-medium uppercase tracking-wider">
+                <label htmlFor="login-password" className="text-[#B7C0D0] text-xs font-medium uppercase tracking-wider">
                   Password
                 </label>
                 <button
@@ -150,18 +201,22 @@ export default function LoginPage() {
               </div>
               <div className="relative">
                 <input
+                  id="login-password"
                   type={showPass ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (fieldErrors.password) setFieldErrors((f) => ({ ...f, password: undefined }));
+                  }}
+                  aria-invalid={Boolean(fieldErrors.password)}
                   className="w-full px-4 py-3 rounded-lg text-sm text-white outline-none pr-11 transition-all duration-150"
                   style={{
                     backgroundColor: "#151D2B",
-                    border: "1px solid rgba(255,255,255,0.08)",
+                    border: `1px solid ${fieldErrors.password ? "#E0177A" : "rgba(255,255,255,0.08)"}`,
                     caretColor: "#F5C518",
                   }}
                   onFocus={(e) => (e.target.style.borderColor = "rgba(245,197,24,0.4)")}
-                  onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.08)")}
+                  onBlur={(e) => (e.target.style.borderColor = fieldErrors.password ? "#E0177A" : "rgba(255,255,255,0.08)")}
                 />
                 <button
                   type="button"
@@ -171,6 +226,9 @@ export default function LoginPage() {
                   {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+              {fieldErrors.password && (
+                <p className="text-xs mt-1.5" style={{ color: "#F5A8CB" }}>{fieldErrors.password}</p>
+              )}
             </div>
 
             <button

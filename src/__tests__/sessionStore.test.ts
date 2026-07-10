@@ -15,12 +15,13 @@ describe("sessionStore", () => {
     expect(state.isAvatarSpeaking).toBe(false);
   });
 
-  it("setSession updates sessionId, scenarioId and vendorName", () => {
-    useSessionStore.getState().setSession("sess-1", "scen-1", "Juan");
+  it("setSession updates sessionId, scenarioId, vendorName and delegatedToken", () => {
+    useSessionStore.getState().setSession("sess-1", "scen-1", "Juan", "delegated-token-abc");
     const state = useSessionStore.getState();
     expect(state.sessionId).toBe("sess-1");
     expect(state.scenarioId).toBe("scen-1");
     expect(state.vendorName).toBe("Juan");
+    expect(state.delegatedToken).toBe("delegated-token-abc");
   });
 
   it("setTavusUrl updates tavusConversationUrl", () => {
@@ -29,11 +30,12 @@ describe("sessionStore", () => {
   });
 
   it("reset clears all state back to initial", () => {
-    useSessionStore.getState().setSession("sess-1", "scen-1", "Juan");
+    useSessionStore.getState().setSession("sess-1", "scen-1", "Juan", "delegated-token-abc");
     useSessionStore.getState().reset();
     const state = useSessionStore.getState();
     expect(state.sessionId).toBeNull();
     expect(state.vendorName).toBe("");
     expect(state.transcript).toEqual([]);
+    expect(state.delegatedToken).toBeNull();
   });
 });

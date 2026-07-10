@@ -30,7 +30,7 @@ function formatTime(secs: number) {
 export default function SessionScreen() {
   const navigate = useNavigate();
   const { sessionId, scenarioId, vendorName, transcript, currentEmotion,
-          isAvatarSpeaking, elapsedSeconds, tavusConversationUrl, addTranscriptEntry,
+          isAvatarSpeaking, elapsedSeconds, tavusConversationUrl, delegatedToken, addTranscriptEntry,
           setCurrentEmotion, setIsAvatarSpeaking, incrementElapsed } = useSessionStore();
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -86,7 +86,8 @@ export default function SessionScreen() {
 
   const connectWs = useCallback(() => {
     if (!sessionId || wsRef.current?.readyState === WebSocket.OPEN) return;
-    const ws = new WebSocket(`${FASTAPI_WS}/ws/${sessionId}`);
+    const tokenParam = delegatedToken ? `?token=${encodeURIComponent(delegatedToken)}` : "";
+    const ws = new WebSocket(`${FASTAPI_WS}/ws/${sessionId}${tokenParam}`);
     wsRef.current = ws;
     ws.onopen = () => { reconnectCountRef.current = 0; };
     ws.onmessage = (ev) => {
@@ -132,8 +133,12 @@ export default function SessionScreen() {
         setIsAvatarSpeaking(false);
       }
     };
-    ws.onclose = () => {
+    ws.onclose = (ev) => {
       if (sessionEndedRef.current) return;
+      if (ev.code === 4401) {
+        redirectOnAuthFailure();
+        return;
+      }
       if (reconnectCountRef.current >= 10) {
         setWsError("Conexion perdida. Recargá la página para continuar.");
         return;
@@ -148,11 +153,16 @@ export default function SessionScreen() {
   const connectBioWs = useCallback(() => {
     if (!sessionId || sessionEndedRef.current) return;
     if (wsBioRef.current?.readyState === WebSocket.OPEN) return;
-    const ws = new WebSocket(`${FASTAPI_WS}/ws/${sessionId}/biometrics`);
+    const tokenParam = delegatedToken ? `?token=${encodeURIComponent(delegatedToken)}` : "";
+    const ws = new WebSocket(`${FASTAPI_WS}/ws/${sessionId}/biometrics${tokenParam}`);
     wsBioRef.current = ws;
     ws.onopen = () => { reconnectBioCountRef.current = 0; };
-    ws.onclose = () => {
+    ws.onclose = (ev) => {
       if (sessionEndedRef.current) return;
+      if (ev.code === 4401) {
+        redirectOnAuthFailure();
+        return;
+      }
       const delay = Math.min(1000 * 2 ** reconnectBioCountRef.current, 30000);
       reconnectBioCountRef.current++;
       setTimeout(connectBioWs, delay);
@@ -382,6 +392,18 @@ export default function SessionScreen() {
     wsRef.current?.send(JSON.stringify({ type: "interrupt" }));
   }
 
+  /** AI-Service-k rejected our delegated token (WS closed with 4401, or /session/end 401) — the session can't continue. */
+  function redirectOnAuthFailure() {
+    if (sessionEndedRef.current) return;
+    sessionEndedRef.current = true;
+    if (bioTimerRef.current) clearInterval(bioTimerRef.current);
+    wsRef.current?.close();
+    wsBioRef.current?.close();
+    stopAudio();
+    setWsError("No se pudo autenticar la sesión. Volviendo a la lista de escenarios...");
+    setTimeout(() => navigate("/scenarios"), 2500);
+  }
+
   async function endSession() {
     setIsEnding(true);
     sessionEndedRef.current = true;
@@ -389,11 +411,18 @@ export default function SessionScreen() {
     try {
       wsRef.current?.close();
       stopAudio();
-      await fetch(`${FASTAPI_URL}/session/end`, {
+      const endRes = await fetch(`${FASTAPI_URL}/session/end`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(delegatedToken ? { Authorization: `Bearer ${delegatedToken}` } : {}),
+        },
         body: JSON.stringify({ session_id: sessionId }),
       });
+      if (endRes.status === 401) {
+        navigate("/scenarios");
+        return;
+      }
       navigate(`/report/${sessionId}`);
     } catch {
       navigate(`/report/${sessionId}`);

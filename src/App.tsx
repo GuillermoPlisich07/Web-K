@@ -9,32 +9,62 @@ import ScenarioChoiceScreen from "./pages/ScenarioChoiceScreen";
 import ScenarioExpressScreen from "./pages/ScenarioExpressScreen";
 import ScenarioDetailedScreen from "./pages/ScenarioDetailedScreen";
 import PlaceholderScreen from "./pages/PlaceholderScreen";
+import DashboardScreen from "./pages/DashboardScreen";
+import ProductsScreen from "./pages/ProductsScreen";
+import ServicesScreen from "./pages/ServicesScreen";
+import UsersScreen from "./pages/UsersScreen";
+import CompanyScreen from "./pages/CompanyScreen";
+import SettingsScreen from "./pages/SettingsScreen";
 import RequireRole from "./components/RequireRole";
+import RequireAuth from "./components/RequireAuth";
+import RedirectIfAuthenticated from "./components/RedirectIfAuthenticated";
+import { useAuthBootstrap } from "./hooks/useAuthBootstrap";
 
 export default function App() {
+  useAuthBootstrap();
+
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route element={<AppShell />}>
-        <Route
-          path="/"
-          element={
-            <PlaceholderScreen
-              title="Dashboard"
-              description="Tu resumen de actividad y métricas de entrenamiento, próximamente."
-            />
-          }
-        />
+      <Route
+        path="/login"
+        element={
+          <RedirectIfAuthenticated>
+            <LoginPage />
+          </RedirectIfAuthenticated>
+        }
+      />
+      <Route
+        element={
+          <RequireAuth>
+            <AppShell />
+          </RequireAuth>
+        }
+      >
+        <Route path="/" element={<DashboardScreen />} />
         <Route path="/session" element={<SessionScreen />} />
         <Route path="/report/:sessionId" element={<ReportScreen />} />
         <Route path="/history" element={<HistoryScreen />} />
         <Route path="/scenarios" element={<ScenariosListScreen />} />
-        <Route path="/scenarios/new" element={<ScenarioChoiceScreen />} />
-        <Route path="/scenarios/new/express" element={<ScenarioExpressScreen />} />
+        <Route
+          path="/scenarios/new"
+          element={
+            <RequireRole allow={["employee", "admin"]} redirectTo="/scenarios">
+              <ScenarioChoiceScreen />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/scenarios/new/express"
+          element={
+            <RequireRole allow={["employee", "admin"]} redirectTo="/scenarios">
+              <ScenarioExpressScreen />
+            </RequireRole>
+          }
+        />
         <Route
           path="/scenarios/new/detailed"
           element={
-            <RequireRole allow={["admin", "exec"]} redirectTo="/scenarios">
+            <RequireRole allow={["admin"]} redirectTo="/scenarios">
               <ScenarioDetailedScreen />
             </RequireRole>
           }
@@ -42,7 +72,7 @@ export default function App() {
         <Route
           path="/scenarios/:id/edit"
           element={
-            <RequireRole allow={["admin", "exec"]} redirectTo="/scenarios">
+            <RequireRole allow={["admin"]} redirectTo="/scenarios">
               <ScenarioDetailedScreen />
             </RequireRole>
           }
@@ -59,10 +89,12 @@ export default function App() {
         <Route
           path="/knowledge-base"
           element={
-            <PlaceholderScreen
-              title="Knowledge Base"
-              description="Documentación y recursos de entrenamiento, próximamente."
-            />
+            <RequireRole allow={["admin", "exec"]} redirectTo="/">
+              <PlaceholderScreen
+                title="Knowledge Base"
+                description="Documentación y recursos de entrenamiento, próximamente."
+              />
+            </RequireRole>
           }
         />
         <Route
@@ -95,20 +127,52 @@ export default function App() {
         <Route
           path="/users"
           element={
-            <RequireRole allow={["admin"]} redirectTo="/">
-              <PlaceholderScreen title="Users" description="Gestión de usuarios, próximamente." />
+            <RequireRole allow={["admin", "exec"]} redirectTo="/">
+              <UsersScreen />
             </RequireRole>
           }
         />
         <Route
-          path="/settings"
+          path="/products"
           element={
-            <PlaceholderScreen
-              title="Settings"
-              description="Configuración de la cuenta, próximamente."
-            />
+            <RequireRole allow={["admin", "exec"]} redirectTo="/">
+              <ProductsScreen />
+            </RequireRole>
           }
         />
+        <Route
+          path="/services"
+          element={
+            <RequireRole allow={["admin", "exec"]} redirectTo="/">
+              <ServicesScreen />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/company"
+          element={
+            <RequireRole allow={["admin", "exec"]} redirectTo="/">
+              <CompanyScreen />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/billing"
+          element={
+            <RequireRole allow={["admin", "exec"]} redirectTo="/">
+              <PlaceholderScreen title="Billing" description="Facturación y planes, próximamente." />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="/integrations"
+          element={
+            <RequireRole allow={["admin", "exec"]} redirectTo="/">
+              <PlaceholderScreen title="Integraciones" description="Integraciones con otras herramientas, próximamente." />
+            </RequireRole>
+          }
+        />
+        <Route path="/settings" element={<SettingsScreen />} />
       </Route>
     </Routes>
   );

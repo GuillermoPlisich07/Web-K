@@ -2,9 +2,7 @@ import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Search, Bell, ChevronDown } from "lucide-react";
 import { ROLE_LABELS, getPageTitle, type Role } from "../config/nav";
-
-const GRAD =
-  "linear-gradient(135deg, #F5C518 0%, #FF6130 28%, #E0177A 56%, #7B22B4 78%, #4050C8 100%)";
+import { GRAD } from "../lib/theme";
 
 const NOTIFICATIONS = [
   { title: "New simulation available", body: "Closing a SaaS Deal — Enterprise", time: "2m ago" },
@@ -12,17 +10,14 @@ const NOTIFICATIONS = [
   { title: "League update", body: "You're #2 in the Sales team league", time: "3h ago" },
 ];
 
-const ROLE_OPTIONS: Role[] = ["employee", "admin", "exec"];
-
 interface Props {
   role: Role;
-  onRoleChange: (role: Role) => void;
   onLogout: () => void;
 }
 
-export default function TopBar({ role, onRoleChange, onLogout }: Props) {
+export default function TopBar({ role, onLogout }: Props) {
   const location = useLocation();
-  const [roleOpen, setRoleOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
 
   return (
@@ -58,7 +53,7 @@ export default function TopBar({ role, onRoleChange, onLogout }: Props) {
           type="button"
           onClick={() => {
             setNotifOpen(!notifOpen);
-            setRoleOpen(false);
+            setAccountOpen(false);
           }}
           className="relative w-8 h-8 flex items-center justify-center rounded-lg transition-colors duration-150 cursor-pointer"
           style={{ color: "#7F8899" }}
@@ -97,12 +92,12 @@ export default function TopBar({ role, onRoleChange, onLogout }: Props) {
         )}
       </div>
 
-      {/* Role switcher */}
+      {/* Account menu — role is read-only, sourced from the verified session */}
       <div className="relative">
         <button
           type="button"
           onClick={() => {
-            setRoleOpen(!roleOpen);
+            setAccountOpen(!accountOpen);
             setNotifOpen(false);
           }}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-150 cursor-pointer"
@@ -116,46 +111,24 @@ export default function TopBar({ role, onRoleChange, onLogout }: Props) {
           {ROLE_LABELS[role]}
           <ChevronDown size={12} />
         </button>
-        {roleOpen && (
+        {accountOpen && (
           <div
             className="absolute right-0 top-10 w-40 rounded-xl overflow-hidden shadow-2xl z-50"
             style={{ backgroundColor: "#151D2B", border: "1px solid rgba(255,255,255,0.09)" }}
           >
-            {ROLE_OPTIONS.map((r) => (
-              <button
-                type="button"
-                key={r}
-                onClick={() => {
-                  onRoleChange(r);
-                  setRoleOpen(false);
-                }}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-left transition-colors duration-100 cursor-pointer"
-                style={{ color: role === r ? "#FFFFFF" : "#7F8899" }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#1B2536")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-              >
-                <span
-                  className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                  style={{ background: role === r ? GRAD : "transparent" }}
-                />
-                {ROLE_LABELS[r]}
-              </button>
-            ))}
-            <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setRoleOpen(false);
-                  onLogout();
-                }}
-                className="w-full px-4 py-2.5 text-xs text-left cursor-pointer transition-colors duration-100"
-                style={{ color: "#7F8899" }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#1B2536")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-              >
-                Sign out
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setAccountOpen(false);
+                onLogout();
+              }}
+              className="w-full px-4 py-2.5 text-xs text-left cursor-pointer transition-colors duration-100"
+              style={{ color: "#7F8899" }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#1B2536")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+            >
+              Sign out
+            </button>
           </div>
         )}
       </div>

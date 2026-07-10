@@ -4,8 +4,7 @@ import {
   RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer,
   LineChart, Line, XAxis, YAxis, Tooltip, BarChart, Bar, CartesianGrid, Cell,
 } from "recharts";
-
-const SPRING_URL = import.meta.env.VITE_SPRING_URL ?? "http://localhost:8080";
+import { apiFetch } from "../services/apiClient";
 
 interface SessionReport {
   id: string;
@@ -185,13 +184,13 @@ export default function ReportScreen() {
         return n + 1;
       });
       try {
-        const r = await fetch(`${SPRING_URL}/api/sessions/${sessionId}/report`);
+        const r = await apiFetch(`/api/sessions/${sessionId}/report`);
         if (r.ok) {
           const data = await r.json();
           setReport(data);
           setLoading(false);
           clearInterval(iv);
-          const tr = await fetch(`${SPRING_URL}/api/sessions/${sessionId}/transcript`);
+          const tr = await apiFetch(`/api/sessions/${sessionId}/transcript`);
           if (tr.ok) setTranscript(await tr.json());
         }
       } catch {

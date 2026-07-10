@@ -8,6 +8,35 @@ body {
   font-family: "Inter", sans-serif;
 }
 
+/*
+ * Themed scrollbar for every scrollable area (Sidebar nav, main content,
+ * modals) — replaces the default OS/browser scrollbar with a thin,
+ * low-contrast bar that matches the dark surface palette instead of
+ * standing out against it.
+ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.14);
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.24);
+}
+
 @layer components {
   .field-input {
     @apply w-full bg-[#10111e] border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-colors text-sm;
