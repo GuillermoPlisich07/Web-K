@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { Pencil, Trash2 } from "lucide-react";
 import { useRole } from "../context/RoleContext";
 import { isReadOnlyRole } from "../lib/permissions";
+import { GRAD } from "../lib/theme";
 import UserFormModal from "../components/crud/UserFormModal";
 import ConfirmDeleteModal from "../components/crud/ConfirmDeleteModal";
 import {
@@ -17,6 +19,20 @@ const ROLE_LABELS: Record<UserRole, string> = {
   ADMIN: "Administrador",
   EXEC: "Autoridad",
 };
+
+const ROLE_BADGE: Record<UserRole, { bg: string; text: string }> = {
+  EMPLOYEE: { bg: "rgba(59,130,246,0.1)", text: "#3B82F6" },
+  ADMIN: { bg: "rgba(168,85,247,0.1)", text: "#A855F7" },
+  EXEC: { bg: "rgba(245,158,11,0.1)", text: "#F59E0B" },
+};
+
+/** No display-name field on User — derive 1-2 initials from the email local-part. */
+function initialsFromEmail(email: string): string {
+  const localPart = email.split("@")[0] ?? email;
+  const segments = localPart.split(/[._-]+/).filter(Boolean);
+  const chars = segments.length > 1 ? [segments[0][0], segments[1][0]] : [localPart.slice(0, 2)];
+  return chars.join("").toUpperCase();
+}
 
 export default function UsersScreen() {
   const { role } = useRole();
@@ -123,7 +139,7 @@ export default function UsersScreen() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-800 text-left text-slate-500 text-xs uppercase tracking-wider">
-                <th className="px-5 py-3 font-medium">Email</th>
+                <th className="px-5 py-3 font-medium">Usuario</th>
                 <th className="px-5 py-3 font-medium">Rol</th>
                 <th className="px-5 py-3 font-medium">Estado</th>
                 {!readOnly && <th className="px-5 py-3 font-medium">Acciones</th>}
@@ -131,9 +147,29 @@ export default function UsersScreen() {
             </thead>
             <tbody>
               {users.map((u) => (
-                <tr key={u.id} className="border-b border-slate-800 last:border-0">
-                  <td className="px-5 py-3 text-white">{u.email}</td>
-                  <td className="px-5 py-3 text-slate-400">{ROLE_LABELS[u.role]}</td>
+                <tr
+                  key={u.id}
+                  className="border-b border-slate-800 last:border-0 transition-colors duration-100 hover:bg-white/[0.03]"
+                >
+                  <td className="px-5 py-3">
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0"
+                        style={{ background: u.enabled ? GRAD : "rgba(127,136,153,0.3)" }}
+                      >
+                        {initialsFromEmail(u.email)}
+                      </div>
+                      <span className="text-white">{u.email}</span>
+                    </div>
+                  </td>
+                  <td className="px-5 py-3">
+                    <span
+                      className="text-[10px] px-2 py-1 rounded font-medium"
+                      style={{ backgroundColor: ROLE_BADGE[u.role].bg, color: ROLE_BADGE[u.role].text }}
+                    >
+                      {ROLE_LABELS[u.role]}
+                    </span>
+                  </td>
                   <td className="px-5 py-3">
                     <span
                       className="text-xs px-2 py-0.5 rounded-full"
@@ -147,12 +183,20 @@ export default function UsersScreen() {
                   </td>
                   {!readOnly && (
                     <td className="px-5 py-3">
-                      <div className="flex gap-3">
-                        <button onClick={() => setFormModal(u)} className="text-xs text-accent hover:underline">
-                          Editar
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setFormModal(u)}
+                          aria-label="Editar"
+                          className="w-7 h-7 flex items-center justify-center rounded cursor-pointer transition-colors hover:bg-white/5 text-[#7F8899] hover:text-white"
+                        >
+                          <Pencil size={13} />
                         </button>
-                        <button onClick={() => setDeleteModal(u)} className="text-xs text-red-400 hover:underline">
-                          Eliminar
+                        <button
+                          onClick={() => setDeleteModal(u)}
+                          aria-label="Eliminar"
+                          className="w-7 h-7 flex items-center justify-center rounded cursor-pointer transition-colors hover:bg-white/5 text-[#7F8899] hover:text-red-400"
+                        >
+                          <Trash2 size={13} />
                         </button>
                       </div>
                     </td>

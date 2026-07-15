@@ -60,4 +60,44 @@ describe("SettingsScreen", () => {
     await waitFor(() => expect(screen.getByText("Perfil guardado.")).toBeInTheDocument());
     expect(useAuthStore.getState().profileCompleted).toBe(true);
   });
+
+  it("defaults to the Profile tab and has no Company tab", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(existingProfile)));
+
+    render(
+      <MemoryRouter>
+        <SettingsScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(screen.getByLabelText("Edad")).toBeInTheDocument());
+    expect(screen.queryByText("Company")).not.toBeInTheDocument();
+  });
+
+  it("switching tabs shows honest placeholder content, not fake interactive controls", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(() => Promise.resolve(jsonResponse(existingProfile))));
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <SettingsScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(screen.getByLabelText("Edad")).toBeInTheDocument());
+
+    await user.click(screen.getByRole("button", { name: /Notifications/i }));
+    expect(screen.getAllByText("Próximamente").length).toBeGreaterThan(0);
+    expect(screen.queryByLabelText("Edad")).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Billing/i }));
+    expect(screen.getByRole("heading", { name: "Billing" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Integrations/i }));
+    expect(screen.getByRole("heading", { name: "Integrations" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Profile/i }));
+    expect(screen.getByLabelText("Edad")).toBeInTheDocument();
+  });
 });

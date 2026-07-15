@@ -82,7 +82,7 @@ export default function DashboardAdmin() {
                       contentStyle={{ backgroundColor: "#0c0d18", border: "1px solid #334155", borderRadius: 8 }}
                       cursor={{ fill: "rgba(255,255,255,0.03)" }}
                     />
-                    <Bar dataKey="sessionCount" name="Sesiones" fill="#E0177A" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="sessionCount" name="Sesiones" fill="#FF4E87" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}

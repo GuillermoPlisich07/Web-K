@@ -66,7 +66,7 @@ export default function DashboardEmployee() {
                 <XAxis dataKey="dateLabel" tick={{ fill: COLORS.textMuted, fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis domain={[0, 10]} tick={{ fill: COLORS.textMuted, fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={{ backgroundColor: "#0c0d18", border: "1px solid #334155", borderRadius: 8 }} />
-                <Line type="monotone" dataKey="score" stroke="#E0177A" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                <Line type="monotone" dataKey="score" stroke="#FF4E87" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
           )}

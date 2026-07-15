@@ -43,13 +43,184 @@ body {
   }
 
   .gradient-brand {
-    background: linear-gradient(135deg, #F5C518 0%, #FF6130 28%, #E0177A 56%, #7B22B4 78%, #4050C8 100%);
+    background: linear-gradient(135deg, #FFE08A 0%, #FF9A3D 22%, #FF4E87 48%, #9E4CFF 72%, #5266FF 100%);
   }
 
   .gradient-text {
-    background: linear-gradient(135deg, #F5C518 0%, #FF6130 28%, #E0177A 56%, #7B22B4 78%, #4050C8 100%);
+    background: linear-gradient(135deg, #FFE08A 0%, #FF9A3D 22%, #FF4E87 48%, #9E4CFF 72%, #5266FF 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+  }
+}
+
+/*
+ * Ambient app shell background (refresh-frontend-design) — three blurred,
+ * slow-drifting radial-gradient orbs plus a faint grid overlay, scoped to
+ * .app-ambient (applied only in AppShell.tsx, never on /login or the
+ * profile-completion gate, both rendered outside AppShell).
+ */
+.app-ambient {
+  position: relative;
+  isolation: isolate;
+}
+
+.app-ambient::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.032) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.026) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(circle at 58% 30%, black, transparent 74%);
+}
+
+.ambient-orb {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 9999px;
+  filter: blur(64px);
+  opacity: 0.42;
+  mix-blend-mode: screen;
+  animation: liquid-drift 16s ease-in-out infinite alternate;
+}
+
+.ambient-orb-one {
+  width: 24rem;
+  height: 24rem;
+  left: 15rem;
+  top: -10rem;
+  background: rgba(255, 154, 61, 0.18);
+}
+
+.ambient-orb-two {
+  width: 30rem;
+  height: 30rem;
+  right: -12rem;
+  top: 8rem;
+  background: rgba(82, 102, 255, 0.18);
+  animation-delay: -5s;
+}
+
+.ambient-orb-three {
+  width: 22rem;
+  height: 22rem;
+  right: 20%;
+  bottom: -13rem;
+  background: rgba(255, 78, 135, 0.15);
+  animation-delay: -9s;
+}
+
+@keyframes liquid-drift {
+  from {
+    transform: translate3d(-2%, -1%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(3%, 2%, 0) scale(1.08);
+  }
+}
+
+/*
+ * Glassmorphism for existing card surfaces. Two selectors, matching the two
+ * card-background patterns actually in use in this codebase (verified by
+ * grep before writing this, per design.md's fragility note):
+ *   - `bg-[#10111e]` Tailwind arbitrary-value class — the dominant pattern
+ *     (CRUD screens, modals, session screen).
+ *   - inline `backgroundColor: COLORS.card` (rgba(18,26,42,0.72)) — used by
+ *     DashboardCard/DashboardStates only.
+ * Both selectors are brittle by nature (exact string/class match) — if either
+ * pattern is rewritten with different formatting, this stops matching and
+ * silently falls back to a flat surface. A future shared <Card> component
+ * would remove this fragility; out of scope for a styling-only change.
+ */
+.bg-\[\#10111e\],
+[style*="rgba(18,26,42"],
+[style*="rgba(18, 26, 42"] {
+  backdrop-filter: blur(18px) saturate(135%);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 18px 48px rgba(0, 0, 0, 0.16);
+}
+
+/*
+ * Button micro-interactions (refresh-frontend-design) — small lift on hover,
+ * press-down on active, applied app-wide. Gradient-glide is scoped to
+ * .gradient-brand (the only reusable gradient-fill class) since arbitrary
+ * inline `background: GRAD` buttons vary per call site and can't be targeted
+ * generically without a shared component.
+ */
+button:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+button:not(:disabled):active {
+  transform: translateY(0) scale(0.99);
+}
+
+button, input, [role="button"] {
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gradient-brand {
+  background-size: 180% 180%;
+}
+
+.gradient-brand:hover {
+  animation: gradient-glide 2.8s ease infinite alternate;
+}
+
+@keyframes gradient-glide {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 100% 50%;
+  }
+}
+
+/*
+ * Page-enter transition (refresh-frontend-design) — applied to the <main>
+ * wrapping <Outlet /> in AppShell.tsx. Relies on React Router mounting a
+ * fresh page component per route, so the animation replays automatically on
+ * navigation without any JS-driven transition logic.
+ */
+.page-flow > * {
+  animation: page-rise 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes page-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+/*
+ * Reduced motion (refresh-frontend-design) — disables/simplifies every
+ * animated effect added above: orb drift, page-enter transition, and the
+ * gradient hover glide.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .ambient-orb {
+    animation: none;
+  }
+
+  .page-flow > * {
+    animation: none;
+  }
+
+  .gradient-brand:hover {
+    animation: none;
   }
 }

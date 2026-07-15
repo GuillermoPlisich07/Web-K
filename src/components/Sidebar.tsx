@@ -14,7 +14,7 @@ export default function Sidebar({ role, onLogout }: Props) {
 
   return (
     <aside
-      className="flex flex-col w-[220px] flex-shrink-0 h-screen overflow-hidden"
+      className="flex flex-col w-[220px] flex-shrink-0 h-screen sticky top-0 overflow-hidden"
       style={{ backgroundColor: "#0A0E18", borderRight: "1px solid rgba(255,255,255,0.06)" }}
     >
       {/* Logo */}
@@ -65,7 +65,7 @@ export default function Sidebar({ role, onLogout }: Props) {
                     <Icon
                       size={15}
                       strokeWidth={active ? 2 : 1.75}
-                      style={{ color: active ? "#F5C518" : "#7F8899" }}
+                      style={{ color: active ? "#FFE08A" : "#7F8899" }}
                     />
                     <span
                       className="text-sm font-medium"
@@ -90,7 +90,7 @@ export default function Sidebar({ role, onLogout }: Props) {
           className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg"
           style={{ backgroundColor: "#151D2B", border: "1px solid rgba(255,255,255,0.06)" }}
         >
-          <Flame size={14} style={{ color: "#FF6130" }} />
+          <Flame size={14} style={{ color: "#FF9A3D" }} />
           <div className="flex-1 min-w-0">
             <div className="text-xs font-semibold text-white">12 day streak</div>
             <div className="text-[10px]" style={{ color: "#7F8899" }}>

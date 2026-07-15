@@ -9,7 +9,7 @@ interface Props {
 export default function DashboardCard({ children, className = "" }: Props) {
   return (
     <div
-      className={`rounded-2xl p-5 ${className}`}
+      className={`rounded-2xl p-5 min-w-0 ${className}`}
       style={{ backgroundColor: COLORS.card, border: `1px solid ${COLORS.border}` }}
     >
       {children}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import ModalPortal from "../components/ModalPortal";
 import { Scenario, ClientPersona, Difficulty, Industry } from "../types";
 import { useSessionStore } from "../store/sessionStore";
 import { useRole } from "../context/RoleContext";
@@ -249,76 +250,80 @@ export default function ScenariosListScreen() {
 
       {/* Modal: confirmar borrado de escenario express */}
       {deleteModal && (
-        <div
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4"
-          onClick={(e) => { if (e.target === e.currentTarget) setDeleteModal(null); }}
-        >
-          <div className="bg-[#10111e] border border-red-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-            <h3 className="font-display text-lg font-bold text-white mb-2">¿Eliminar escenario?</h3>
-            <p className="text-sm text-slate-400 mb-1 leading-relaxed">
-              <span className="text-white font-medium">{deleteModal.name}</span>
-            </p>
-            <p className="text-xs text-slate-500 mb-5">Esta acción no se puede deshacer.</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setDeleteModal(null)}
-                className="flex-1 border border-slate-700 text-slate-300 hover:text-white text-sm rounded-lg py-2.5 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex-1 bg-red-800 hover:bg-red-700 disabled:opacity-40 text-white text-sm font-semibold rounded-lg py-2.5 transition-colors"
-              >
-                {deleting ? "Eliminando..." : "Eliminar"}
-              </button>
+        <ModalPortal>
+          <div
+            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4"
+            onClick={(e) => { if (e.target === e.currentTarget) setDeleteModal(null); }}
+          >
+            <div className="bg-[#10111e] border border-red-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+              <h3 className="font-display text-lg font-bold text-white mb-2">¿Eliminar escenario?</h3>
+              <p className="text-sm text-slate-400 mb-1 leading-relaxed">
+                <span className="text-white font-medium">{deleteModal.name}</span>
+              </p>
+              <p className="text-xs text-slate-500 mb-5">Esta acción no se puede deshacer.</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteModal(null)}
+                  className="flex-1 border border-slate-700 text-slate-300 hover:text-white text-sm rounded-lg py-2.5 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex-1 bg-red-800 hover:bg-red-700 disabled:opacity-40 text-white text-sm font-semibold rounded-lg py-2.5 transition-colors"
+                >
+                  {deleting ? "Eliminando..." : "Eliminar"}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
 
       {/* Modal: ingresar nombre para entrenar */}
       {trainModal && (
-        <div
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4"
-          onClick={(e) => { if (e.target === e.currentTarget) setTrainModal(null); }}
-        >
-          <div className="bg-[#10111e] border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
-            <h3 className="font-display text-lg font-bold text-white mb-1 leading-tight">
-              {trainModal.name}
-            </h3>
-            <p className="text-xs text-slate-400 mb-5 leading-relaxed">{trainModal.description}</p>
+        <ModalPortal>
+          <div
+            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4"
+            onClick={(e) => { if (e.target === e.currentTarget) setTrainModal(null); }}
+          >
+            <div className="bg-[#10111e] border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+              <h3 className="font-display text-lg font-bold text-white mb-1 leading-tight">
+                {trainModal.name}
+              </h3>
+              <p className="text-xs text-slate-400 mb-5 leading-relaxed">{trainModal.description}</p>
 
-            <label className="block text-sm font-medium text-slate-400 mb-2">Tu nombre</label>
-            <input
-              type="text"
-              autoFocus
-              value={vendorName}
-              onChange={(e) => setVendorName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleStartTraining()}
-              placeholder="Ej: Martín González"
-              className="w-full bg-[#07080d] border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-accent transition-colors mb-1"
-            />
-            {startError && <p className="text-red-400 text-xs mb-3 mt-1">{startError}</p>}
+              <label className="block text-sm font-medium text-slate-400 mb-2">Tu nombre</label>
+              <input
+                type="text"
+                autoFocus
+                value={vendorName}
+                onChange={(e) => setVendorName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleStartTraining()}
+                placeholder="Ej: Martín González"
+                className="w-full bg-[#07080d] border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-accent transition-colors mb-1"
+              />
+              {startError && <p className="text-red-400 text-xs mb-3 mt-1">{startError}</p>}
 
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={() => setTrainModal(null)}
-                className="flex-1 border border-slate-700 text-slate-300 hover:text-white text-sm rounded-lg py-2.5 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleStartTraining}
-                disabled={starting || !vendorName.trim()}
-                className="flex-1 bg-accent hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg py-2.5 transition-colors"
-              >
-                {starting ? "Iniciando..." : "Entrenar →"}
-              </button>
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={() => setTrainModal(null)}
+                  className="flex-1 border border-slate-700 text-slate-300 hover:text-white text-sm rounded-lg py-2.5 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleStartTraining}
+                  disabled={starting || !vendorName.trim()}
+                  className="flex-1 bg-accent hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg py-2.5 transition-colors"
+                >
+                  {starting ? "Iniciando..." : "Entrenar →"}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
     </div>
   );

@@ -48,8 +48,8 @@ describe("UsersScreen", () => {
     await waitFor(() => expect(screen.getByText("vendedor@konverza.com")).toBeInTheDocument());
 
     expect(screen.getByText(/Nuevo usuario/i)).toBeInTheDocument();
-    expect(screen.getByText("Editar")).toBeInTheDocument();
-    expect(screen.getByText("Eliminar")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Editar" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Eliminar" })).toBeInTheDocument();
 
     const user = userEvent.setup();
     await user.click(screen.getByText(/Nuevo usuario/i));
@@ -64,8 +64,8 @@ describe("UsersScreen", () => {
     await waitFor(() => expect(screen.getByText("vendedor@konverza.com")).toBeInTheDocument());
 
     expect(screen.queryByText(/Nuevo usuario/i)).not.toBeInTheDocument();
-    expect(screen.queryByText("Editar")).not.toBeInTheDocument();
-    expect(screen.queryByText("Eliminar")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Editar" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Eliminar" })).not.toBeInTheDocument();
   });
 
   it("shows an empty state when the list is empty", async () => {

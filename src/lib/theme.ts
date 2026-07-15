@@ -6,7 +6,7 @@
  * tokens instead of the mockups' literal hex values.
  */
 export const GRAD =
-  "linear-gradient(135deg, #F5C518 0%, #FF6130 28%, #E0177A 56%, #7B22B4 78%, #4050C8 100%)";
+  "linear-gradient(135deg, #FFE08A 0%, #FF9A3D 22%, #FF4E87 48%, #9E4CFF 72%, #5266FF 100%)";
 
 export const COLORS = {
   bg: "#080B11",

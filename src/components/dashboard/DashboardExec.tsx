@@ -71,7 +71,7 @@ export default function DashboardExec() {
                     <XAxis dataKey="label" tick={{ fill: COLORS.textMuted, fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis tick={{ fill: COLORS.textMuted, fontSize: 11 }} axisLine={false} tickLine={false} />
                     <Tooltip contentStyle={{ backgroundColor: "#0c0d18", border: "1px solid #334155", borderRadius: 8 }} />
-                    <Line type="monotone" dataKey="sessionCount" name="Sesiones" stroke="#4050C8" strokeWidth={2.5} dot={false} />
+                    <Line type="monotone" dataKey="sessionCount" name="Sesiones" stroke="#5266FF" strokeWidth={2.5} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               )}
