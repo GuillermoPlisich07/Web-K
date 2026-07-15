@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ClientPersona, Difficulty, Industry, Scenario } from "../types";
 import { getVendorName, setVendorName } from "../lib/identity";
 import { apiFetch } from "../services/apiClient";
+import { INDUSTRIES } from "../lib/industries";
 
 type Step = "form" | "loading" | "review";
 
@@ -16,17 +17,6 @@ interface FormData {
   priceRange: string;
   keyDifferentiator: string;
 }
-
-const INDUSTRIES: { value: Industry; label: string }[] = [
-  { value: "SOFTWARE_B2B", label: "Software B2B" },
-  { value: "FINANZAS",     label: "Servicios financieros" },
-  { value: "CONSULTORIA",  label: "Consultoría" },
-  { value: "TELCO",        label: "Telecomunicaciones" },
-  { value: "SEGUROS",      label: "Seguros" },
-  { value: "RETAIL",       label: "Retail" },
-  { value: "SALUD",        label: "Salud" },
-  { value: "OTRO",         label: "Otro" },
-];
 
 const PERSONAS: { value: ClientPersona; icon: string; label: string; desc: string }[] = [
   { value: "ANGRY",       icon: "😤", label: "Enojado",      desc: "Historial de problemas, tono agresivo" },

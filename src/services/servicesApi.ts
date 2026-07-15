@@ -5,6 +5,10 @@ export interface Servicio {
   name: string;
   description: string | null;
   context: string | null;
+  priceRange: string | null;
+  keyDifferentiator: string | null;
+  paymentInfo: string | null;
+  tags: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -13,6 +17,10 @@ export interface ServicioRequest {
   name: string;
   description: string;
   context: string;
+  priceRange: string;
+  keyDifferentiator: string;
+  paymentInfo: string;
+  tags: string[];
 }
 
 export async function listServicios(): Promise<Servicio[]> {

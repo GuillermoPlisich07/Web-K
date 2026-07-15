@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import ProductsScreen from "../pages/ProductsScreen";
@@ -19,7 +20,18 @@ function jsonResponse(body: unknown): Response {
 }
 
 const oneItem = [
-  { id: "1", name: "CRM", description: "CRM para ventas", context: "Contexto", createdAt: "2026-07-01T00:00:00", updatedAt: "2026-07-01T00:00:00" },
+  {
+    id: "1",
+    name: "CRM",
+    description: "CRM para ventas",
+    context: "Contexto",
+    priceRange: "USD 500-1200/mes",
+    keyDifferentiator: "Soporte 24/7 en español",
+    paymentInfo: "Mensual o anual con 20% de descuento",
+    tags: ["b2b", "saas"],
+    createdAt: "2026-07-01T00:00:00",
+    updatedAt: "2026-07-01T00:00:00",
+  },
 ];
 
 function renderScreen(Component: typeof ProductsScreen, role: Role, items: unknown[]) {
@@ -65,5 +77,30 @@ describe.each([
   it("shows an empty state when the list is empty", async () => {
     renderScreen(Component, "admin", []);
     await waitFor(() => expect(screen.getByText(emptyText)).toBeInTheDocument());
+  });
+
+  it("shows price range, key differentiator, payment info, and tags on the card", async () => {
+    renderScreen(Component, "admin", oneItem);
+    await waitFor(() => expect(screen.getByText("CRM")).toBeInTheDocument());
+
+    expect(screen.getByText("USD 500-1200/mes")).toBeInTheDocument();
+    expect(screen.getByText("Soporte 24/7 en español")).toBeInTheDocument();
+    expect(screen.getByText("Mensual o anual con 20% de descuento")).toBeInTheDocument();
+    expect(screen.getByText("b2b")).toBeInTheDocument();
+    expect(screen.getByText("saas")).toBeInTheDocument();
+  });
+
+  it("edit form pre-fills price range, key differentiator, payment info, and tags", async () => {
+    renderScreen(Component, "admin", oneItem);
+    await waitFor(() => expect(screen.getByText("CRM")).toBeInTheDocument());
+
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Editar"));
+
+    expect(screen.getByDisplayValue("USD 500-1200/mes")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Soporte 24/7 en español")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Mensual o anual con 20% de descuento")).toBeInTheDocument();
+    expect(screen.getAllByText("b2b").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("saas").length).toBeGreaterThan(0);
   });
 });

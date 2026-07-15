@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { useRole } from "../context/RoleContext";
 import { isReadOnlyRole } from "../lib/permissions";
+import { INDUSTRIES } from "../lib/industries";
 import { getEmpresa, upsertEmpresa, type Empresa } from "../services/empresaApi";
+import type { Industry } from "../types";
+
+const INDUSTRY_LABELS: Record<Industry, string> = Object.fromEntries(
+  INDUSTRIES.map((i) => [i.value, i.label])
+) as Record<Industry, string>;
 
 /**
  * Company context screen (add-users-empresa-profile) — singleton record.
@@ -18,7 +24,12 @@ export default function CompanyScreen() {
 
   const [name, setName] = useState("");
   const [context, setContext] = useState("");
+  const [description, setDescription] = useState("");
+  const [vision, setVision] = useState("");
+  const [objective, setObjective] = useState("");
+  const [industries, setIndustries] = useState<Industry[]>([]);
   const [nameError, setNameError] = useState("");
+  const [industriesError, setIndustriesError] = useState("");
   const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -30,25 +41,53 @@ export default function CompanyScreen() {
         if (data) {
           setName(data.name);
           setContext(data.context ?? "");
+          setDescription(data.description ?? "");
+          setVision(data.vision ?? "");
+          setObjective(data.objective ?? "");
+          setIndustries(data.industries ?? []);
         }
       })
       .catch(() => setLoadError("No se pudo cargar el contexto de la empresa."))
       .finally(() => setLoading(false));
   }, []);
 
+  function toggleIndustry(value: Industry) {
+    setIndustries((prev) =>
+      prev.includes(value) ? prev.filter((i) => i !== value) : [...prev, value]
+    );
+    setSaved(false);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaveError("");
     setSaved(false);
+
+    let hasError = false;
     if (!name.trim()) {
       setNameError("El nombre es obligatorio");
-      return;
+      hasError = true;
+    } else {
+      setNameError("");
     }
-    setNameError("");
+    if (industries.length === 0) {
+      setIndustriesError("Seleccioná al menos una industria");
+      hasError = true;
+    } else {
+      setIndustriesError("");
+    }
+    if (hasError) return;
 
     setSaving(true);
     try {
-      const result = await upsertEmpresa({ name: name.trim(), context: context.trim() });
+      const result = await upsertEmpresa({
+        name: name.trim(),
+        context: context.trim(),
+        description: description.trim(),
+        vision: vision.trim(),
+        objective: objective.trim(),
+        industries,
+      });
       setEmpresa(result);
       setSaved(true);
     } catch {
@@ -74,11 +113,48 @@ export default function CompanyScreen() {
       )}
 
       {!loading && !loadError && readOnly && (
-        <div className="bg-[#10111e] border border-slate-800 rounded-xl p-6">
+        <div className="bg-[#10111e] border border-slate-800 rounded-xl p-6 space-y-4">
           {empresa ? (
             <>
-              <h3 className="font-display text-base font-bold text-white mb-2">{empresa.name}</h3>
-              {empresa.context && <p className="text-sm text-slate-400 leading-relaxed">{empresa.context}</p>}
+              <div>
+                <h3 className="font-display text-base font-bold text-white mb-2">{empresa.name}</h3>
+                {empresa.industries.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {empresa.industries.map((i) => (
+                      <span
+                        key={i}
+                        className="text-[10px] px-2 py-1 rounded-full bg-white/5 text-slate-300"
+                      >
+                        {INDUSTRY_LABELS[i] ?? i}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {empresa.description && (
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Descripción</h4>
+                  <p className="text-sm text-slate-400 leading-relaxed">{empresa.description}</p>
+                </div>
+              )}
+              {empresa.vision && (
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Visión</h4>
+                  <p className="text-sm text-slate-400 leading-relaxed">{empresa.vision}</p>
+                </div>
+              )}
+              {empresa.objective && (
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Objetivo</h4>
+                  <p className="text-sm text-slate-400 leading-relaxed">{empresa.objective}</p>
+                </div>
+              )}
+              {empresa.context && (
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Contexto</h4>
+                  <p className="text-sm text-slate-400 leading-relaxed">{empresa.context}</p>
+                </div>
+              )}
             </>
           ) : (
             <p className="text-slate-500 text-sm">Todavía no se cargó el contexto de la empresa.</p>
@@ -108,6 +184,70 @@ export default function CompanyScreen() {
               placeholder="Ej: Konverza SA"
             />
             {nameError && <p className="text-xs text-red-400 mt-1.5">{nameError}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-400 mb-2">Industrias</label>
+            <div className="flex flex-wrap gap-2">
+              {INDUSTRIES.map((ind) => (
+                <button
+                  key={ind.value}
+                  type="button"
+                  onClick={() => toggleIndustry(ind.value)}
+                  className="text-xs px-3 py-1.5 rounded-full border transition-colors"
+                  style={{
+                    backgroundColor: industries.includes(ind.value) ? "rgba(99,102,241,0.15)" : "transparent",
+                    borderColor: industries.includes(ind.value) ? "#6366F1" : "rgba(255,255,255,0.1)",
+                    color: industries.includes(ind.value) ? "#A5B4FC" : "#7F8899",
+                  }}
+                >
+                  {ind.label}
+                </button>
+              ))}
+            </div>
+            {industriesError && <p className="text-xs text-red-400 mt-1.5">{industriesError}</p>}
+          </div>
+
+          <div>
+            <label htmlFor="empresa-description" className="block text-sm font-medium text-slate-400 mb-2">
+              Descripción
+            </label>
+            <textarea
+              id="empresa-description"
+              value={description}
+              onChange={(e) => { setDescription(e.target.value); setSaved(false); }}
+              rows={3}
+              className="field-input resize-none"
+              placeholder="¿Qué hace la empresa?"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="empresa-vision" className="block text-sm font-medium text-slate-400 mb-2">
+              Visión
+            </label>
+            <textarea
+              id="empresa-vision"
+              value={vision}
+              onChange={(e) => { setVision(e.target.value); setSaved(false); }}
+              rows={2}
+              className="field-input resize-none"
+              placeholder="¿A dónde quiere llegar la empresa?"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="empresa-objective" className="block text-sm font-medium text-slate-400 mb-2">
+              Objetivo
+            </label>
+            <textarea
+              id="empresa-objective"
+              value={objective}
+              onChange={(e) => { setObjective(e.target.value); setSaved(false); }}
+              rows={2}
+              className="field-input resize-none"
+              placeholder="Objetivo actual de la empresa"
+            />
           </div>
 
           <div>

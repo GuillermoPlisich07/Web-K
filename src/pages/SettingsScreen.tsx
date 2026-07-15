@@ -1,22 +1,188 @@
-import { useEffect, useState } from "react";
-import { Bell, CreditCard, Plug, User } from "lucide-react";
-import { getMyProfile, updateMyProfile } from "../services/profileApi";
+import { useEffect, useRef, useState } from "react";
+import { Bell, User } from "lucide-react";
+import { getMyProfile, updateMyProfile, uploadAvatar, changePassword } from "../services/profileApi";
+import { SPRING_URL } from "../services/apiClient";
+import { GRAD } from "../lib/theme";
 import PlaceholderScreen from "./PlaceholderScreen";
 
 type FieldErrors = { age?: string; personality?: string; selfDescription?: string };
-type Tab = "profile" | "notifications" | "billing" | "integrations";
+type Tab = "profile" | "notifications";
 
 const TABS: { id: Tab; label: string; icon: typeof User }[] = [
   { id: "profile", label: "Profile", icon: User },
   { id: "notifications", label: "Notifications", icon: Bell },
-  { id: "billing", label: "Billing", icon: CreditCard },
-  { id: "integrations", label: "Integrations", icon: Plug },
 ];
+
+function initialsFromEmail(email: string): string {
+  const localPart = email.split("@")[0] ?? email;
+  const segments = localPart.split(/[._-]+/).filter(Boolean);
+  const chars = segments.length > 1 ? [segments[0][0], segments[1][0]] : [localPart.slice(0, 2)];
+  return chars.join("").toUpperCase();
+}
+
+function AvatarUpload({
+  email,
+  avatarUrl,
+  onUploaded,
+}: {
+  email: string;
+  avatarUrl: string | null;
+  onUploaded: (avatarUrl: string | null) => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setError("");
+    setUploading(true);
+    try {
+      const profile = await uploadAvatar(file);
+      onUploaded(profile.avatarUrl);
+    } catch {
+      setError("No se pudo subir la imagen. Probá con un PNG, JPEG o WEBP de menos de 5MB.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-4">
+      <div
+        className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-bold text-white flex-shrink-0 overflow-hidden bg-cover bg-center"
+        style={{ background: avatarUrl ? undefined : GRAD }}
+      >
+        {avatarUrl ? (
+          <img src={`${SPRING_URL}${avatarUrl}`} alt="Avatar" className="w-full h-full object-cover" />
+        ) : (
+          initialsFromEmail(email)
+        )}
+      </div>
+      <div>
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="text-sm font-semibold text-white bg-white/10 hover:bg-white/15 disabled:opacity-40 rounded-lg px-3 py-1.5 transition-colors"
+        >
+          {uploading ? "Subiendo..." : "Cambiar imagen"}
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+        {error && <p className="text-xs text-red-400 mt-1.5">{error}</p>}
+      </div>
+    </div>
+  );
+}
+
+function PasswordChangeForm() {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setSaved(false);
+
+    if (newPassword.length < 8) {
+      setError("La nueva contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError("La nueva contraseña y su confirmación no coinciden.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await changePassword({ currentPassword, newPassword });
+      setSaved(true);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo cambiar la contraseña.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} noValidate className="space-y-4">
+      <h4 className="text-sm font-semibold text-white">Cambiar contraseña</h4>
+
+      {error && <p className="text-xs text-red-400">{error}</p>}
+      {saved && <p className="text-xs text-emerald-400">Contraseña actualizada.</p>}
+
+      <div>
+        <label htmlFor="settings-current-password" className="block text-sm font-medium text-slate-400 mb-2">
+          Contraseña actual
+        </label>
+        <input
+          id="settings-current-password"
+          type="password"
+          value={currentPassword}
+          onChange={(e) => { setCurrentPassword(e.target.value); setSaved(false); }}
+          className="field-input"
+        />
+      </div>
+
+      <div>
+        <label htmlFor="settings-new-password" className="block text-sm font-medium text-slate-400 mb-2">
+          Nueva contraseña
+        </label>
+        <input
+          id="settings-new-password"
+          type="password"
+          value={newPassword}
+          onChange={(e) => { setNewPassword(e.target.value); setSaved(false); }}
+          className="field-input"
+        />
+      </div>
+
+      <div>
+        <label htmlFor="settings-confirm-password" className="block text-sm font-medium text-slate-400 mb-2">
+          Confirmar nueva contraseña
+        </label>
+        <input
+          id="settings-confirm-password"
+          type="password"
+          value={confirmPassword}
+          onChange={(e) => { setConfirmPassword(e.target.value); setSaved(false); }}
+          className="field-input"
+        />
+      </div>
+
+      <button
+        type="submit"
+        disabled={saving}
+        className="bg-accent hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-semibold rounded-lg px-4 py-2.5 transition-colors"
+      >
+        {saving ? "Guardando..." : "Cambiar contraseña"}
+      </button>
+    </form>
+  );
+}
 
 function ProfileTab() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
+  const [email, setEmail] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [age, setAge] = useState("");
   const [personality, setPersonality] = useState("");
   const [selfDescription, setSelfDescription] = useState("");
@@ -28,6 +194,8 @@ function ProfileTab() {
   useEffect(() => {
     getMyProfile()
       .then((profile) => {
+        setEmail(profile.email);
+        setAvatarUrl(profile.avatarUrl);
         setAge(profile.age != null ? String(profile.age) : "");
         setPersonality(profile.personality ?? "");
         setSelfDescription(profile.selfDescription ?? "");
@@ -82,74 +250,85 @@ function ProfileTab() {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="bg-[#10111e] border border-slate-800 rounded-xl p-6 space-y-4">
-      <h3 className="font-display text-base font-bold text-white mb-1">Perfil</h3>
-
-      {saveError && <p className="text-xs text-red-400">{saveError}</p>}
-      {saved && <p className="text-xs text-emerald-400">Perfil guardado.</p>}
-
-      <div>
-        <label htmlFor="settings-age" className="block text-sm font-medium text-slate-400 mb-2">
-          Edad
-        </label>
-        <input
-          id="settings-age"
-          type="number"
-          value={age}
-          onChange={(e) => { setAge(e.target.value); setSaved(false); }}
-          className="field-input"
-        />
-        {fieldErrors.age && <p className="text-xs text-red-400 mt-1.5">{fieldErrors.age}</p>}
+    <div className="space-y-6">
+      <div className="bg-[#10111e] border border-slate-800 rounded-xl p-6">
+        <AvatarUpload email={email} avatarUrl={avatarUrl} onUploaded={setAvatarUrl} />
       </div>
 
-      <div>
-        <label htmlFor="settings-personality" className="block text-sm font-medium text-slate-400 mb-2">
-          Personalidad
-        </label>
-        <input
-          id="settings-personality"
-          type="text"
-          value={personality}
-          onChange={(e) => { setPersonality(e.target.value); setSaved(false); }}
-          className="field-input"
-        />
-        {fieldErrors.personality && <p className="text-xs text-red-400 mt-1.5">{fieldErrors.personality}</p>}
-      </div>
+      <form onSubmit={handleSubmit} noValidate className="bg-[#10111e] border border-slate-800 rounded-xl p-6 space-y-4">
+        <h3 className="font-display text-base font-bold text-white mb-1">Perfil</h3>
 
-      <div>
-        <label htmlFor="settings-self-description" className="block text-sm font-medium text-slate-400 mb-2">
-          ¿Quién soy?
-        </label>
-        <textarea
-          id="settings-self-description"
-          value={selfDescription}
-          onChange={(e) => { setSelfDescription(e.target.value); setSaved(false); }}
-          rows={4}
-          className="field-input resize-none"
-        />
-        {fieldErrors.selfDescription && (
-          <p className="text-xs text-red-400 mt-1.5">{fieldErrors.selfDescription}</p>
-        )}
-      </div>
+        {saveError && <p className="text-xs text-red-400">{saveError}</p>}
+        {saved && <p className="text-xs text-emerald-400">Perfil guardado.</p>}
 
-      <button
-        type="submit"
-        disabled={saving}
-        className="bg-accent hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-semibold rounded-lg px-4 py-2.5 transition-colors"
-      >
-        {saving ? "Guardando..." : "Guardar"}
-      </button>
-    </form>
+        <div>
+          <label htmlFor="settings-age" className="block text-sm font-medium text-slate-400 mb-2">
+            Edad
+          </label>
+          <input
+            id="settings-age"
+            type="number"
+            value={age}
+            onChange={(e) => { setAge(e.target.value); setSaved(false); }}
+            className="field-input"
+          />
+          {fieldErrors.age && <p className="text-xs text-red-400 mt-1.5">{fieldErrors.age}</p>}
+        </div>
+
+        <div>
+          <label htmlFor="settings-personality" className="block text-sm font-medium text-slate-400 mb-2">
+            Personalidad
+          </label>
+          <input
+            id="settings-personality"
+            type="text"
+            value={personality}
+            onChange={(e) => { setPersonality(e.target.value); setSaved(false); }}
+            className="field-input"
+          />
+          {fieldErrors.personality && <p className="text-xs text-red-400 mt-1.5">{fieldErrors.personality}</p>}
+        </div>
+
+        <div>
+          <label htmlFor="settings-self-description" className="block text-sm font-medium text-slate-400 mb-2">
+            ¿Quién soy?
+          </label>
+          <textarea
+            id="settings-self-description"
+            value={selfDescription}
+            onChange={(e) => { setSelfDescription(e.target.value); setSaved(false); }}
+            rows={4}
+            className="field-input resize-none"
+          />
+          {fieldErrors.selfDescription && (
+            <p className="text-xs text-red-400 mt-1.5">{fieldErrors.selfDescription}</p>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          disabled={saving}
+          className="bg-accent hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-semibold rounded-lg px-4 py-2.5 transition-colors"
+        >
+          {saving ? "Guardando..." : "Guardar"}
+        </button>
+      </form>
+
+      <div className="bg-[#10111e] border border-slate-800 rounded-xl p-6">
+        <PasswordChangeForm />
+      </div>
+    </div>
   );
 }
 
 /**
  * Settings screen — tabbed (add-refresh-frontend-design). Only Profile is
- * functional (unchanged behavior from before this change); Notifications,
- * Billing, and Integrations render honest "próximamente" placeholders —
- * matching the app's existing PlaceholderScreen convention rather than
- * interactive-looking controls with nothing behind them. No Company tab:
- * a real, backend-backed CompanyScreen already exists at /company.
+ * functional; Notifications renders an honest "próximamente" placeholder,
+ * matching the app's existing PlaceholderScreen convention rather than an
+ * interactive-looking control with nothing behind it. Billing and
+ * Integrations were removed — those are account-level settings, not
+ * app-level, and don't belong here. No Company tab either: a real,
+ * backend-backed CompanyScreen already exists at /company.
  */
 export default function SettingsScreen() {
   const [tab, setTab] = useState<Tab>("profile");
@@ -184,18 +363,6 @@ export default function SettingsScreen() {
       {tab === "notifications" && (
         <div className="bg-[#10111e] border border-slate-800 rounded-xl">
           <PlaceholderScreen title="Notifications" description="Preferencias de notificaciones, próximamente." />
-        </div>
-      )}
-
-      {tab === "billing" && (
-        <div className="bg-[#10111e] border border-slate-800 rounded-xl">
-          <PlaceholderScreen title="Billing" description="Facturación y planes, próximamente." />
-        </div>
-      )}
-
-      {tab === "integrations" && (
-        <div className="bg-[#10111e] border border-slate-800 rounded-xl">
-          <PlaceholderScreen title="Integrations" description="Integraciones con otras herramientas, próximamente." />
         </div>
       )}
     </main>

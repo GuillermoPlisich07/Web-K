@@ -19,7 +19,15 @@ function jsonResponse(body: unknown): Response {
 }
 
 const oneUser = [
-  { id: "1", email: "vendedor@konverza.com", role: "EMPLOYEE", enabled: true, createdAt: "2026-07-01T00:00:00" },
+  {
+    id: "1",
+    firstName: "Juana",
+    lastName: "Perez",
+    email: "vendedor@konverza.com",
+    role: "EMPLOYEE",
+    enabled: true,
+    createdAt: "2026-07-01T00:00:00",
+  },
 ];
 
 function renderScreen(role: Role, items: unknown[] = oneUser) {
@@ -71,5 +79,31 @@ describe("UsersScreen", () => {
   it("shows an empty state when the list is empty", async () => {
     renderScreen("admin", []);
     await waitFor(() => expect(screen.getByText(/no hay usuarios/i)).toBeInTheDocument());
+  });
+
+  it("create form collects first name, last name, email, and password", async () => {
+    renderScreen("admin");
+    await waitFor(() => expect(screen.getByText("Juana Perez")).toBeInTheDocument());
+
+    const user = userEvent.setup();
+    await user.click(screen.getByText(/Nuevo usuario/i));
+
+    expect(screen.getByLabelText("Nombre")).toBeInTheDocument();
+    expect(screen.getByLabelText("Apellido")).toBeInTheDocument();
+    expect(screen.getByLabelText("Email")).toBeInTheDocument();
+    expect(screen.getByLabelText("Contraseña")).toBeInTheDocument();
+  });
+
+  it("edit form pre-fills first name, last name, and email, and allows an optional password reset", async () => {
+    renderScreen("admin");
+    await waitFor(() => expect(screen.getByText("Juana Perez")).toBeInTheDocument());
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Editar" }));
+
+    expect(screen.getByLabelText("Nombre")).toHaveValue("Juana");
+    expect(screen.getByLabelText("Apellido")).toHaveValue("Perez");
+    expect(screen.getByLabelText("Email")).toHaveValue("vendedor@konverza.com");
+    expect(screen.getByLabelText("Nueva contraseña (opcional)")).toHaveValue("");
   });
 });

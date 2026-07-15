@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ClientPersona, Difficulty, Industry } from "../types";
 import { apiFetch } from "../services/apiClient";
+import TagInput from "../components/TagInput";
 // ── Local helper types ────────────────────────────────────────────────────────
 
 interface EmpresaOption { id: string; name: string }
@@ -87,7 +88,6 @@ export default function ScenarioDetailedScreen() {
   const [keyDiff, setKeyDiff] = useState("");
   const [paymentInfo, setPaymentInfo] = useState("");
   const [productTags, setProductTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState("");
 
   // persona
   const [systemPrompt, setSystemPrompt] = useState("");
@@ -541,27 +541,7 @@ export default function ScenarioDetailedScreen() {
                 </Field>
 
                 <Field label="Tags / palabras clave">
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {productTags.map((t, i) => (
-                      <span key={i} className="flex items-center gap-1 bg-slate-800 border border-slate-600 text-slate-300 text-xs px-2.5 py-1 rounded-full">
-                        {t}
-                        <button onClick={() => setProductTags(productTags.filter((_, j) => j !== i))} className="text-slate-500 hover:text-red-400 ml-0.5">×</button>
-                      </span>
-                    ))}
-                  </div>
-                  <input
-                    value={tagInput}
-                    onChange={e => setTagInput(e.target.value)}
-                    onKeyDown={e => {
-                      if ((e.key === "Enter" || e.key === ",") && tagInput.trim()) {
-                        e.preventDefault();
-                        setProductTags([...productTags, tagInput.trim()]);
-                        setTagInput("");
-                      }
-                    }}
-                    placeholder="Escribí y presioná Enter para agregar..."
-                    className="field-input"
-                  />
+                  <TagInput tags={productTags} onChange={setProductTags} />
                 </Field>
 
                 <NavButtons onPrev={() => setActiveSection("identity")} label="Siguiente: Personalidad →" onNext={() => setActiveSection("persona")} />

@@ -108,6 +108,22 @@ export default function ServicesScreen() {
             <div key={s.id} className="bg-[#10111e] border border-slate-800 rounded-xl p-5 flex flex-col gap-2">
               <h3 className="font-display text-base font-bold text-white">{s.name}</h3>
               {s.description && <p className="text-sm text-slate-400 leading-relaxed">{s.description}</p>}
+              {(s.priceRange || s.keyDifferentiator) && (
+                <div className="text-xs text-slate-400 space-y-0.5">
+                  {s.priceRange && <p><span className="text-slate-500">Precio:</span> {s.priceRange}</p>}
+                  {s.keyDifferentiator && <p><span className="text-slate-500">Diferencial:</span> {s.keyDifferentiator}</p>}
+                </div>
+              )}
+              {s.paymentInfo && <p className="text-xs text-slate-500 line-clamp-2">{s.paymentInfo}</p>}
+              {s.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {s.tags.map((t) => (
+                    <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-slate-400">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              )}
               {s.context && <p className="text-xs text-slate-500 line-clamp-3">{s.context}</p>}
               {!readOnly && (
                 <div className="flex gap-3 mt-auto pt-3">
@@ -135,8 +151,16 @@ export default function ServicesScreen() {
           title={formModal === "create" ? "Nuevo servicio" : "Editar servicio"}
           initial={
             formModal === "create"
-              ? { name: "", description: "", context: "" }
-              : { name: formModal.name, description: formModal.description ?? "", context: formModal.context ?? "" }
+              ? { name: "", description: "", context: "", priceRange: "", keyDifferentiator: "", paymentInfo: "", tags: [] }
+              : {
+                  name: formModal.name,
+                  description: formModal.description ?? "",
+                  context: formModal.context ?? "",
+                  priceRange: formModal.priceRange ?? "",
+                  keyDifferentiator: formModal.keyDifferentiator ?? "",
+                  paymentInfo: formModal.paymentInfo ?? "",
+                  tags: formModal.tags,
+                }
           }
           saving={saving}
           error={formError}

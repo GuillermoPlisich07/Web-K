@@ -1,9 +1,14 @@
 import { apiFetch } from "./apiClient";
+import type { Industry } from "../types";
 
 export interface Empresa {
   id: string;
   name: string;
   context: string | null;
+  description: string | null;
+  vision: string | null;
+  objective: string | null;
+  industries: Industry[];
   createdAt: string;
   updatedAt: string;
 }
@@ -11,6 +16,10 @@ export interface Empresa {
 export interface EmpresaRequest {
   name: string;
   context: string;
+  description: string;
+  vision: string;
+  objective: string;
+  industries: Industry[];
 }
 
 /** Returns null when no company context has been created yet (404). */

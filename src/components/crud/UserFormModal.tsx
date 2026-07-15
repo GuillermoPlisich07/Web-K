@@ -9,19 +9,25 @@ const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
 ];
 
 interface CreateValues {
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
   role: UserRole;
 }
 
 interface EditValues {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password?: string;
   role: UserRole;
   enabled: boolean;
 }
 
 interface Props {
   mode: "create" | "edit";
-  initial: EditValues & { email?: string };
+  initial: { firstName?: string; lastName?: string; email?: string; role: UserRole; enabled: boolean };
   saving: boolean;
   error: string;
   onCancel: () => void;
@@ -30,24 +36,40 @@ interface Props {
 }
 
 /**
- * Create/edit form for the Users admin screen (add-users-empresa-profile).
- * Create needs email/password/role; edit only ever touches role/enabled
- * (matches UpdateUserRequest on the backend — email/password are immutable
- * after account creation).
+ * Create/edit form for the Users admin screen. Both create and edit now
+ * collect the same identity fields (nombre, apellido, email, rol) — edit
+ * additionally allows resetting the password by filling in the optional
+ * field, matching UpdateUserRequest on the backend (blank = unchanged).
  */
 export default function UserFormModal({ mode, initial, saving, error, onCancel, onSubmitCreate, onSubmitEdit }: Props) {
+  const [firstName, setFirstName] = useState(initial.firstName ?? "");
+  const [lastName, setLastName] = useState(initial.lastName ?? "");
   const [email, setEmail] = useState(initial.email ?? "");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>(initial.role);
   const [enabled, setEnabled] = useState(initial.enabled);
 
-  const canSubmit = mode === "create" ? email.trim() && password.trim() : true;
+  const canSubmit =
+    firstName.trim() && lastName.trim() && email.trim() && (mode === "edit" || password.trim());
 
   function handleSubmit() {
     if (mode === "create") {
-      onSubmitCreate?.({ email: email.trim(), password, role });
+      onSubmitCreate?.({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        password,
+        role,
+      });
     } else {
-      onSubmitEdit?.({ role, enabled });
+      onSubmitEdit?.({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        password: password.trim() ? password : undefined,
+        role,
+        enabled,
+      });
     }
   }
 
@@ -62,34 +84,57 @@ export default function UserFormModal({ mode, initial, saving, error, onCancel, 
             {mode === "create" ? "Nuevo usuario" : "Editar usuario"}
           </h3>
 
-          {mode === "create" && (
-            <>
-              <label htmlFor="user-form-email" className="block text-sm font-medium text-slate-400 mb-2">
-                Email
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div>
+              <label htmlFor="user-form-first-name" className="block text-sm font-medium text-slate-400 mb-2">
+                Nombre
               </label>
               <input
-                id="user-form-email"
-                type="email"
+                id="user-form-first-name"
+                type="text"
                 autoFocus
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="usuario@konverza.com"
-                className="field-input mb-4"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="field-input"
               />
-
-              <label htmlFor="user-form-password" className="block text-sm font-medium text-slate-400 mb-2">
-                Contraseña
+            </div>
+            <div>
+              <label htmlFor="user-form-last-name" className="block text-sm font-medium text-slate-400 mb-2">
+                Apellido
               </label>
               <input
-                id="user-form-password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Contraseña inicial"
-                className="field-input mb-4"
+                id="user-form-last-name"
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                className="field-input"
               />
-            </>
-          )}
+            </div>
+          </div>
+
+          <label htmlFor="user-form-email" className="block text-sm font-medium text-slate-400 mb-2">
+            Email
+          </label>
+          <input
+            id="user-form-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="usuario@konverza.com"
+            className="field-input mb-4"
+          />
+
+          <label htmlFor="user-form-password" className="block text-sm font-medium text-slate-400 mb-2">
+            {mode === "create" ? "Contraseña" : "Nueva contraseña (opcional)"}
+          </label>
+          <input
+            id="user-form-password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder={mode === "create" ? "Contraseña inicial" : "Dejar en blanco para no cambiarla"}
+            className="field-input mb-4"
+          />
 
           <label htmlFor="user-form-role" className="block text-sm font-medium text-slate-400 mb-2">
             Rol

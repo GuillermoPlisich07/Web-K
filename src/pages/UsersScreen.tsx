@@ -26,8 +26,10 @@ const ROLE_BADGE: Record<UserRole, { bg: string; text: string }> = {
   EXEC: { bg: "rgba(245,158,11,0.1)", text: "#F59E0B" },
 };
 
-/** No display-name field on User — derive 1-2 initials from the email local-part. */
-function initialsFromEmail(email: string): string {
+function initials(firstName: string, lastName: string, email: string): string {
+  if (firstName.trim() && lastName.trim()) {
+    return (firstName.trim()[0] + lastName.trim()[0]).toUpperCase();
+  }
   const localPart = email.split("@")[0] ?? email;
   const segments = localPart.split(/[._-]+/).filter(Boolean);
   const chars = segments.length > 1 ? [segments[0][0], segments[1][0]] : [localPart.slice(0, 2)];
@@ -55,7 +57,7 @@ export default function UsersScreen() {
       .finally(() => setLoading(false));
   }, []);
 
-  async function handleCreate(values: { email: string; password: string; role: UserRole }) {
+  async function handleCreate(values: { firstName: string; lastName: string; email: string; password: string; role: UserRole }) {
     setSaving(true);
     setFormError("");
     try {
@@ -69,7 +71,10 @@ export default function UsersScreen() {
     }
   }
 
-  async function handleEdit(id: string, values: { role: UserRole; enabled: boolean }) {
+  async function handleEdit(
+    id: string,
+    values: { firstName: string; lastName: string; email: string; password?: string; role: UserRole; enabled: boolean }
+  ) {
     setSaving(true);
     setFormError("");
     try {
@@ -157,9 +162,16 @@ export default function UsersScreen() {
                         className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0"
                         style={{ background: u.enabled ? GRAD : "rgba(127,136,153,0.3)" }}
                       >
-                        {initialsFromEmail(u.email)}
+                        {initials(u.firstName, u.lastName, u.email)}
                       </div>
-                      <span className="text-white">{u.email}</span>
+                      <div>
+                        <div className="text-white">
+                          {u.firstName || u.lastName ? `${u.firstName} ${u.lastName}`.trim() : u.email}
+                        </div>
+                        {(u.firstName || u.lastName) && (
+                          <div className="text-xs text-slate-500">{u.email}</div>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="px-5 py-3">
@@ -214,7 +226,13 @@ export default function UsersScreen() {
           initial={
             formModal === "create"
               ? { role: "EMPLOYEE", enabled: true }
-              : { email: formModal.email, role: formModal.role, enabled: formModal.enabled }
+              : {
+                  firstName: formModal.firstName,
+                  lastName: formModal.lastName,
+                  email: formModal.email,
+                  role: formModal.role,
+                  enabled: formModal.enabled,
+                }
           }
           saving={saving}
           error={formError}

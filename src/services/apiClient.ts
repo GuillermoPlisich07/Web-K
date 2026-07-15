@@ -1,7 +1,7 @@
 import { useAuthStore } from "../store/authStore";
 import type { Role } from "../config/nav";
 
-const SPRING_URL = import.meta.env.VITE_SPRING_URL ?? "http://localhost:8080";
+export const SPRING_URL = import.meta.env.VITE_SPRING_URL ?? "http://localhost:8080";
 
 export interface AuthResponse {
   accessToken: string;

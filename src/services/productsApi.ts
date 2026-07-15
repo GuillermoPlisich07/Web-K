@@ -5,6 +5,10 @@ export interface Producto {
   name: string;
   description: string | null;
   context: string | null;
+  priceRange: string | null;
+  keyDifferentiator: string | null;
+  paymentInfo: string | null;
+  tags: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -13,6 +17,10 @@ export interface ProductoRequest {
   name: string;
   description: string;
   context: string;
+  priceRange: string;
+  keyDifferentiator: string;
+  paymentInfo: string;
+  tags: string[];
 }
 
 export async function listProductos(): Promise<Producto[]> {

@@ -20,6 +20,7 @@ const existingProfile = {
   personality: "Analitico",
   selfDescription: "Vendedor con experiencia",
   profileCompleted: true,
+  avatarUrl: null,
 };
 
 describe("SettingsScreen", () => {
@@ -91,13 +92,80 @@ describe("SettingsScreen", () => {
     expect(screen.queryByLabelText("Edad")).not.toBeInTheDocument();
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /Billing/i }));
-    expect(screen.getByRole("heading", { name: "Billing" })).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /Integrations/i }));
-    expect(screen.getByRole("heading", { name: "Integrations" })).toBeInTheDocument();
-
     await user.click(screen.getByRole("button", { name: /Profile/i }));
     expect(screen.getByLabelText("Edad")).toBeInTheDocument();
+  });
+
+  it("has no Billing or Integrations tab", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(existingProfile)));
+
+    render(
+      <MemoryRouter>
+        <SettingsScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(screen.getByLabelText("Edad")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: /Billing/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Integrations/i })).not.toBeInTheDocument();
+  });
+
+  it("shows an avatar upload control and a password-change form on the Profile tab", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(existingProfile)));
+
+    render(
+      <MemoryRouter>
+        <SettingsScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(screen.getByLabelText("Edad")).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Cambiar imagen" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Contraseña actual")).toBeInTheDocument();
+    expect(screen.getByLabelText("Nueva contraseña")).toBeInTheDocument();
+    expect(screen.getByLabelText("Confirmar nueva contraseña")).toBeInTheDocument();
+  });
+
+  it("changes the password when the confirmation matches", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(existingProfile))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <SettingsScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(screen.getByLabelText("Edad")).toBeInTheDocument());
+
+    await user.type(screen.getByLabelText("Contraseña actual"), "OldPass123!");
+    await user.type(screen.getByLabelText("Nueva contraseña"), "NewPass123!");
+    await user.type(screen.getByLabelText("Confirmar nueva contraseña"), "NewPass123!");
+    await user.click(screen.getByRole("button", { name: "Cambiar contraseña" }));
+
+    await waitFor(() => expect(screen.getByText("Contraseña actualizada.")).toBeInTheDocument());
+  });
+
+  it("rejects a password change when the confirmation doesn't match", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(existingProfile)));
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <SettingsScreen />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(screen.getByLabelText("Edad")).toBeInTheDocument());
+
+    await user.type(screen.getByLabelText("Contraseña actual"), "OldPass123!");
+    await user.type(screen.getByLabelText("Nueva contraseña"), "NewPass123!");
+    await user.type(screen.getByLabelText("Confirmar nueva contraseña"), "Mismatch123!");
+    await user.click(screen.getByRole("button", { name: "Cambiar contraseña" }));
+
+    expect(screen.getByText("La nueva contraseña y su confirmación no coinciden.")).toBeInTheDocument();
   });
 });
