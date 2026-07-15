@@ -11,7 +11,12 @@ export interface Scenario {
   clientPersona: ClientPersona;
   difficulty: Difficulty;
   productContext?: string;
+  /** Pure behaviour/persona profile of the client avatar */
   systemPrompt?: string;
+  vendedorRol?: string;
+  escenarioObjetivo?: string;
+  empresaId?: string;
+  productoId?: string;
   avatarVoiceId?: string;
   objectionsGuide?: string;
   faq?: string;

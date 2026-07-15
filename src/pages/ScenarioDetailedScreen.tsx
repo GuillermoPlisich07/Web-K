@@ -1,89 +1,93 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ClientPersona, Difficulty, Industry } from "../types";
 import { apiFetch } from "../services/apiClient";
+// ── Local helper types ────────────────────────────────────────────────────────
+
+interface EmpresaOption { id: string; name: string }
+interface ProductoOption { id: string; name: string }
 
 const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL ?? "http://localhost:8000";
 
 type SectionKey = "identity" | "product" | "persona" | "objections" | "faq" | "evaluation" | "voice" | "preview";
 
 const SECTIONS: { key: SectionKey; label: string }[] = [
-  { key: "identity",   label: "Identidad" },
-  { key: "product",    label: "Contexto del producto" },
-  { key: "persona",    label: "Personalidad del cliente" },
+  { key: "identity", label: "Identidad" },
+  { key: "product", label: "Contexto del producto" },
+  { key: "persona", label: "Personalidad del cliente" },
   { key: "objections", label: "Objeciones" },
-  { key: "faq",        label: "FAQ" },
+  { key: "faq", label: "FAQ" },
   { key: "evaluation", label: "Evaluación" },
-  { key: "voice",      label: "Voz y avatar" },
-  { key: "preview",    label: "Vista previa" },
+  { key: "voice", label: "Voz y avatar" },
+  { key: "preview", label: "Vista previa" },
 ];
 
 interface Objection { trigger: string; objection: string; hint: string }
-interface FaqItem    { question: string; answer: string }
-interface Weights    { persuasion: number; confidence: number; product_knowledge: number; objection_handling: number; pronunciation: number }
+interface FaqItem { question: string; answer: string }
+interface Weights { persuasion: number; confidence: number; product_knowledge: number; objection_handling: number; pronunciation: number }
 
 const DEFAULT_WEIGHTS: Weights = { persuasion: 25, confidence: 20, product_knowledge: 25, objection_handling: 20, pronunciation: 10 };
 
 const WEIGHT_LABELS: Record<keyof Weights, string> = {
-  persuasion:         "Persuasión",
-  confidence:         "Confianza",
-  product_knowledge:  "Conocimiento del producto",
+  persuasion: "Persuasión",
+  confidence: "Confianza",
+  product_knowledge: "Conocimiento del producto",
   objection_handling: "Manejo de objeciones",
-  pronunciation:      "Pronunciación y dicción",
+  pronunciation: "Pronunciación y dicción",
 };
 
 const INDUSTRY_OPTIONS: { value: Industry; label: string }[] = [
   { value: "SOFTWARE_B2B", label: "Software B2B" },
-  { value: "FINANZAS",     label: "Finanzas" },
-  { value: "CONSULTORIA",  label: "Consultoría" },
-  { value: "TELCO",        label: "Telecom" },
-  { value: "SEGUROS",      label: "Seguros" },
-  { value: "RETAIL",       label: "Retail" },
-  { value: "SALUD",        label: "Salud" },
-  { value: "OTRO",         label: "Otro" },
+  { value: "FINANZAS", label: "Finanzas" },
+  { value: "CONSULTORIA", label: "Consultoría" },
+  { value: "TELCO", label: "Telecom" },
+  { value: "SEGUROS", label: "Seguros" },
+  { value: "RETAIL", label: "Retail" },
+  { value: "SALUD", label: "Salud" },
+  { value: "OTRO", label: "Otro" },
 ];
 
 const PERSONA_OPTIONS: { value: ClientPersona; label: string; desc: string; color: string }[] = [
-  { value: "ANGRY",       label: "Enojado",     desc: "Agresivo, impaciente",       color: "border-red-700 bg-red-950/50 text-red-300" },
-  { value: "DIFFICULT",   label: "Difícil",     desc: "Escéptico, resistente",      color: "border-orange-700 bg-orange-950/50 text-orange-300" },
+  { value: "ANGRY", label: "Enojado", desc: "Agresivo, impaciente", color: "border-red-700 bg-red-950/50 text-red-300" },
+  { value: "DIFFICULT", label: "Difícil", desc: "Escéptico, resistente", color: "border-orange-700 bg-orange-950/50 text-orange-300" },
   { value: "INDIFFERENT", label: "Indiferente", desc: "Poco interesado, distraído", color: "border-slate-600 bg-slate-800/50 text-slate-300" },
-  { value: "DEMANDING",   label: "Exigente",    desc: "Analítico, exige detalles",  color: "border-yellow-700 bg-yellow-950/50 text-yellow-300" },
+  { value: "DEMANDING", label: "Exigente", desc: "Analítico, exige detalles", color: "border-yellow-700 bg-yellow-950/50 text-yellow-300" },
 ];
 
 const DIFFICULTY_OPTIONS: { value: Difficulty; label: string; color: string }[] = [
-  { value: "EASY",   label: "Fácil",   color: "border-green-700 text-green-400 bg-green-950/40" },
-  { value: "MEDIUM", label: "Media",   color: "border-yellow-700 text-yellow-400 bg-yellow-950/40" },
-  { value: "HARD",   label: "Difícil", color: "border-red-700 text-red-400 bg-red-950/40" },
+  { value: "EASY", label: "Fácil", color: "border-green-700 text-green-400 bg-green-950/40" },
+  { value: "MEDIUM", label: "Media", color: "border-yellow-700 text-yellow-400 bg-yellow-950/40" },
+  { value: "HARD", label: "Difícil", color: "border-red-700 text-red-400 bg-red-950/40" },
 ];
 
 export default function ScenarioDetailedScreen() {
-  const navigate  = useNavigate();
-  const { id }    = useParams<{ id: string }>();
-  const isEdit    = Boolean(id);
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const isEdit = Boolean(id);
 
-  const [activeSection,  setActiveSection]  = useState<SectionKey>("identity");
-  const [saving,         setSaving]         = useState(false);
-  const [aiLoading,      setAiLoading]      = useState<Record<string, boolean>>({});
-  const [error,          setError]          = useState("");
+  const [activeSection, setActiveSection] = useState<SectionKey>("identity");
+  const [saving, setSaving] = useState(false);
+  const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({});
+  const [error, setError] = useState("");
   const [loadingInitial, setLoadingInitial] = useState(isEdit);
-  const [scenarioId,     setScenarioId]     = useState<string | null>(id ?? null);
+  const [scenarioId, setScenarioId] = useState<string | null>(id ?? null);
 
   // identity
-  const [name,               setName]               = useState("");
-  const [description,        setDescription]        = useState("");
-  const [industry,           setIndustry]           = useState<Industry | "">("");
-  const [clientPersona,      setClientPersona]      = useState<ClientPersona | "">("");
-  const [difficulty,         setDifficulty]         = useState<Difficulty | "">("");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [industry, setIndustry] = useState<Industry | "">("");
+  const [clientPersona, setClientPersona] = useState<ClientPersona | "">("");
+  const [difficulty, setDifficulty] = useState<Difficulty | "">("");
   const [maxDurationMinutes, setMaxDurationMinutes] = useState(30);
 
   // product
   const [productName, setProductName] = useState("");
   const [productDesc, setProductDesc] = useState("");
-  const [priceRange,  setPriceRange]  = useState("");
-  const [keyDiff,     setKeyDiff]     = useState("");
+  const [priceRange, setPriceRange] = useState("");
+  const [keyDiff, setKeyDiff] = useState("");
   const [paymentInfo, setPaymentInfo] = useState("");
   const [productTags, setProductTags] = useState<string[]>([]);
-  const [tagInput,    setTagInput]    = useState("");
+  const [tagInput, setTagInput] = useState("");
 
   // persona
   const [systemPrompt, setSystemPrompt] = useState("");
@@ -98,11 +102,33 @@ export default function ScenarioDetailedScreen() {
   const [weights, setWeights] = useState<Weights>(DEFAULT_WEIGHTS);
 
   // voice
-  const [avatarVoiceId,    setAvatarVoiceId]    = useState("");
+  const [avatarVoiceId, setAvatarVoiceId] = useState("");
   const [forbiddenPhrases, setForbiddenPhrases] = useState<string[]>([]);
-  const [phraseInput,      setPhraseInput]      = useState("");
-  const [ttsLoading,       setTtsLoading]       = useState(false);
-  const [ttsError,         setTtsError]         = useState("");
+  const [phraseInput, setPhraseInput] = useState("");
+  const [ttsLoading, setTtsLoading] = useState(false);
+  const [ttsError, setTtsError] = useState("");
+
+  // scenario context (structured builder)
+  const [vendedorRol, setVendedorRol] = useState("");
+  const [escenarioObjetivo, setEscenarioObjetivo] = useState("");
+  const [empresaId, setEmpresaId] = useState("");
+  const [productoId, setProductoId] = useState("");
+  const [empresaList, setEmpresaList] = useState<EmpresaOption[]>([]);
+  const [productoList, setProductoList] = useState<ProductoOption[]>([]);
+
+  // Fetch empresa & productos for the dropdowns (ADMIN only, best-effort)
+  const fetchContextLists = useCallback(() => {
+    apiFetch("/api/empresa")
+      .then(r => r.ok ? r.json() : null)
+      .then(e => { if (e?.id) setEmpresaList([{ id: e.id, name: e.name }]); })
+      .catch(() => { /* not critical — dropdowns just stay empty */ });
+    apiFetch("/api/productos")
+      .then(r => r.ok ? r.json() : [])
+      .then((list: { id: string; name: string }[]) => setProductoList(list))
+      .catch(() => { });
+  }, []);
+
+  useEffect(() => { fetchContextLists(); }, [fetchContextLists]);
 
   useEffect(() => {
     if (!isEdit || !id) return;
@@ -118,6 +144,10 @@ export default function ScenarioDetailedScreen() {
         setSystemPrompt(s.systemPrompt ?? "");
         setAvatarVoiceId(s.avatarVoiceId ?? "");
         setPaymentInfo(s.paymentInfo ?? "");
+        setVendedorRol(s.vendedorRol ?? "");
+        setEscenarioObjetivo(s.escenarioObjetivo ?? "");
+        setEmpresaId(s.empresaId ?? "");
+        setProductoId(s.productoId ?? "");
         try {
           const pc = JSON.parse(s.productContext ?? "{}");
           setProductName(pc.productName ?? "");
@@ -142,30 +172,34 @@ export default function ScenarioDetailedScreen() {
       name,
       description,
       clientPersona: clientPersona || "INDIFFERENT",
-      difficulty:    difficulty    || "MEDIUM",
+      difficulty: difficulty || "MEDIUM",
       ...(industry ? { industry } : {}),
       maxDurationMinutes,
       productContext: JSON.stringify({ productName, productDescription: productDesc, priceRange, keyDifferentiator: keyDiff, tags: productTags }),
       systemPrompt,
-      objectionsGuide:   JSON.stringify(objections),
-      faq:               JSON.stringify(faqItems),
+      objectionsGuide: JSON.stringify(objections),
+      faq: JSON.stringify(faqItems),
       paymentInfo,
       evaluationWeights: JSON.stringify(weights),
-      forbiddenPhrases:  JSON.stringify(forbiddenPhrases),
+      forbiddenPhrases: JSON.stringify(forbiddenPhrases),
       avatarVoiceId,
+      vendedorRol: vendedorRol || null,
+      escenarioObjetivo: escenarioObjetivo || null,
+      empresaId: empresaId || null,
+      productoId: productoId || null,
     };
   }
 
   async function handleSave() {
-    if (!name.trim())   { setError("El nombre es obligatorio.");      setActiveSection("identity"); return; }
+    if (!name.trim()) { setError("El nombre es obligatorio."); setActiveSection("identity"); return; }
     if (!clientPersona) { setError("Seleccioná el tipo de cliente."); setActiveSection("identity"); return; }
-    if (!difficulty)    { setError("Seleccioná la dificultad.");      setActiveSection("identity"); return; }
+    if (!difficulty) { setError("Seleccioná la dificultad."); setActiveSection("identity"); return; }
     setSaving(true);
     setError("");
     try {
-      const url    = scenarioId ? `/api/scenarios/${scenarioId}` : "/api/scenarios";
+      const url = scenarioId ? `/api/scenarios/${scenarioId}` : "/api/scenarios";
       const method = scenarioId ? "PUT" : "POST";
-      const res    = await apiFetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildBody()) });
+      const res = await apiFetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildBody()) });
       if (!res.ok) throw new Error();
       const saved = await res.json();
       setScenarioId(saved.id);
@@ -209,10 +243,10 @@ export default function ScenarioDetailedScreen() {
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
-      if (section === "system_prompt")         setSystemPrompt(data.content);
-      else if (section === "objections_guide") { try { setObjections(JSON.parse(data.content));      } catch {} }
-      else if (section === "faq")              { try { setFaqItems(JSON.parse(data.content));         } catch {} }
-      else if (section === "forbidden_phrases"){ try { setForbiddenPhrases(JSON.parse(data.content)); } catch {} }
+      if (section === "system_prompt") setSystemPrompt(data.content);
+      else if (section === "objections_guide") { try { setObjections(JSON.parse(data.content)); } catch { } }
+      else if (section === "faq") { try { setFaqItems(JSON.parse(data.content)); } catch { } }
+      else if (section === "forbidden_phrases") { try { setForbiddenPhrases(JSON.parse(data.content)); } catch { } }
     } catch {
       setError("Error al generar con IA.");
     } finally {
@@ -237,9 +271,9 @@ export default function ScenarioDetailedScreen() {
       for (let i = 0; i < pcm.length; i++) {
         pcm[i] = (raw.charCodeAt(i * 2) & 0xff) | ((raw.charCodeAt(i * 2 + 1) & 0xff) << 8);
       }
-      const ctx    = new AudioContext({ sampleRate: 16000 });
+      const ctx = new AudioContext({ sampleRate: 16000 });
       const buffer = ctx.createBuffer(1, pcm.length, 16000);
-      const chan   = buffer.getChannelData(0);
+      const chan = buffer.getChannelData(0);
       for (let i = 0; i < pcm.length; i++) chan[i] = pcm[i] / 32768;
       const src = ctx.createBufferSource();
       src.buffer = buffer;
@@ -253,18 +287,18 @@ export default function ScenarioDetailedScreen() {
   }
 
   const weightsTotal = Object.values(weights).reduce((a, b) => a + b, 0);
-  const wordCount    = systemPrompt.trim().split(/\s+/).filter(Boolean).length;
+  const wordCount = systemPrompt.trim().split(/\s+/).filter(Boolean).length;
 
   function isComplete(key: SectionKey): boolean {
     switch (key) {
-      case "identity":   return !!name.trim() && !!clientPersona && !!difficulty;
-      case "product":    return !!productName.trim();
-      case "persona":    return wordCount >= 30;
+      case "identity": return !!name.trim() && !!clientPersona && !!difficulty;
+      case "product": return !!productName.trim();
+      case "persona": return wordCount >= 30;
       case "objections": return objections.length > 0;
-      case "faq":        return faqItems.length > 0;
+      case "faq": return faqItems.length > 0;
       case "evaluation": return weightsTotal === 100;
-      case "voice":      return !!avatarVoiceId.trim();
-      case "preview":    return true;
+      case "voice": return !!avatarVoiceId.trim();
+      case "preview": return true;
     }
   }
 
@@ -302,17 +336,16 @@ export default function ScenarioDetailedScreen() {
         <aside className="w-56 shrink-0 border-r border-slate-800 flex flex-col bg-[#09090f]">
           <nav className="flex-1 py-4 overflow-y-auto">
             {SECTIONS.map((s, i) => {
-              const done   = isComplete(s.key);
+              const done = isComplete(s.key);
               const active = activeSection === s.key;
               return (
                 <button
                   key={s.key}
                   onClick={() => setActiveSection(s.key)}
-                  className={`w-full text-left px-4 py-2.5 flex items-center gap-3 text-sm transition-colors ${
-                    active
+                  className={`w-full text-left px-4 py-2.5 flex items-center gap-3 text-sm transition-colors ${active
                       ? "bg-slate-800 text-white"
                       : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/40"
-                  }`}
+                    }`}
                 >
                   <span className={`w-2 h-2 rounded-full shrink-0 transition-colors ${done ? "bg-green-500" : "bg-slate-600"}`} />
                   <span className="truncate">{i + 1}. {s.label}</span>
@@ -363,11 +396,10 @@ export default function ScenarioDetailedScreen() {
                       <button
                         key={o.value}
                         onClick={() => setIndustry(industry === o.value ? "" : o.value)}
-                        className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${
-                          industry === o.value
+                        className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${industry === o.value
                             ? "border-accent bg-accent/20 text-white"
                             : "border-slate-700 bg-slate-800/50 text-slate-400 hover:border-slate-500"
-                        }`}
+                          }`}
                       >
                         {o.label}
                       </button>
@@ -381,11 +413,10 @@ export default function ScenarioDetailedScreen() {
                       <button
                         key={o.value}
                         onClick={() => setClientPersona(o.value)}
-                        className={`text-left p-4 rounded-xl border transition-all ${
-                          clientPersona === o.value
+                        className={`text-left p-4 rounded-xl border transition-all ${clientPersona === o.value
                             ? o.color + " border-2"
                             : "border-slate-700 bg-slate-800/30 text-slate-400 hover:border-slate-500"
-                        }`}
+                          }`}
                       >
                         <p className="font-semibold text-sm">{o.label}</p>
                         <p className="text-xs mt-0.5 opacity-70">{o.desc}</p>
@@ -400,11 +431,10 @@ export default function ScenarioDetailedScreen() {
                       <button
                         key={o.value}
                         onClick={() => setDifficulty(o.value)}
-                        className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition-all ${
-                          difficulty === o.value
+                        className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition-all ${difficulty === o.value
                             ? o.color + " border-2"
                             : "border-slate-700 bg-slate-800/30 text-slate-400 hover:border-slate-500"
-                        }`}
+                          }`}
                       >
                         {o.label}
                       </button>
@@ -416,6 +446,69 @@ export default function ScenarioDetailedScreen() {
                   <input type="range" min={5} max={90} step={5} value={maxDurationMinutes} onChange={e => setMaxDurationMinutes(Number(e.target.value))} className="w-full accent-indigo-500 mt-1" />
                   <div className="flex justify-between text-xs text-slate-500 mt-1"><span>5 min</span><span>90 min</span></div>
                 </Field>
+
+                {/* ── Structured Scenario Builder ── */}
+                <div className="bg-[#0c0d18] border border-slate-700 rounded-xl p-5 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-200 mb-0.5">Contexto del escenario</h3>
+                    <p className="text-xs text-slate-500">Datos estructurados usados para ensamblar el system prompt final.</p>
+                  </div>
+
+                  <Field label="Rol del vendedor">
+                    <input
+                      id="scenario-vendedor-rol"
+                      value={vendedorRol}
+                      onChange={e => setVendedorRol(e.target.value)}
+                      placeholder="Ej. SDR, Account Executive, Asesor de Inversiones"
+                      className="field-input"
+                    />
+                  </Field>
+
+                  <Field label="Objetivo del escenario">
+                    <textarea
+                      id="scenario-objetivo"
+                      value={escenarioObjetivo}
+                      onChange={e => setEscenarioObjetivo(e.target.value)}
+                      rows={2}
+                      placeholder="Ej. Agendar una demo de 15 minutos, Evitar la cancelación del contrato..."
+                      className="field-input resize-none"
+                    />
+                  </Field>
+
+                  <Field label="Empresa vinculada">
+                    <select
+                      id="scenario-empresa-id"
+                      value={empresaId}
+                      onChange={e => setEmpresaId(e.target.value)}
+                      className="field-input"
+                    >
+                      <option value="">— Sin empresa vinculada —</option>
+                      {empresaList.map(e => (
+                        <option key={e.id} value={e.id}>{e.name}</option>
+                      ))}
+                    </select>
+                    {empresaList.length === 0 && (
+                      <p className="text-xs text-slate-600 mt-1">Configurá la empresa en Ajustes para poder vincularla aquí.</p>
+                    )}
+                  </Field>
+
+                  <Field label="Producto vinculado">
+                    <select
+                      id="scenario-producto-id"
+                      value={productoId}
+                      onChange={e => setProductoId(e.target.value)}
+                      className="field-input"
+                    >
+                      <option value="">— Sin producto vinculado —</option>
+                      {productoList.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                    {productoList.length === 0 && (
+                      <p className="text-xs text-slate-600 mt-1">Agregá productos en la sección Productos para poder vincularlos aquí.</p>
+                    )}
+                  </Field>
+                </div>
 
                 <NavButtons label="Siguiente: Contexto del producto →" onNext={() => setActiveSection("product")} />
               </section>
@@ -639,11 +732,10 @@ export default function ScenarioDetailedScreen() {
                   ))}
                 </div>
 
-                <div className={`flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-mono ${
-                  weightsTotal === 100
+                <div className={`flex items-center justify-between px-4 py-3 rounded-xl border text-sm font-mono ${weightsTotal === 100
                     ? "bg-green-950/40 border-green-800 text-green-400"
                     : "bg-red-950/40 border-red-800 text-red-400"
-                }`}>
+                  }`}>
                   <span>Total</span>
                   <span>{weightsTotal}% {weightsTotal !== 100 && `— ajustá los sliders para llegar a 100`}</span>
                 </div>
@@ -733,7 +825,7 @@ export default function ScenarioDetailedScreen() {
                 <div className="bg-[#0c0d18] border border-slate-700 rounded-xl p-5">
                   <h4 className="text-sm font-semibold text-slate-300 mb-3">Personas por defecto (desde .env)</h4>
                   <div className="space-y-1.5">
-                    {(["ANGRY","DIFFICULT","INDIFFERENT","DEMANDING"] as ClientPersona[]).map(p => (
+                    {(["ANGRY", "DIFFICULT", "INDIFFERENT", "DEMANDING"] as ClientPersona[]).map(p => (
                       <div key={p} className="flex items-center justify-between text-xs font-mono">
                         <span className="text-slate-500">{p}</span>
                         <span className="text-slate-400">TAVUS_PERSONA_{p}</span>
@@ -753,17 +845,25 @@ export default function ScenarioDetailedScreen() {
 
                 <div className="space-y-4">
                   <PreviewBlock label="Identidad">
-                    <PreviewRow label="Nombre"     value={name || "—"} />
-                    <PreviewRow label="Industria"  value={industry || "—"} />
-                    <PreviewRow label="Cliente"    value={clientPersona || "—"} />
+                    <PreviewRow label="Nombre" value={name || "—"} />
+                    <PreviewRow label="Industria" value={industry || "—"} />
+                    <PreviewRow label="Cliente" value={clientPersona || "—"} />
                     <PreviewRow label="Dificultad" value={difficulty || "—"} />
-                    <PreviewRow label="Duración"   value={`${maxDurationMinutes} min`} />
+                    <PreviewRow label="Duración" value={`${maxDurationMinutes} min`} />
                     {description && <PreviewRow label="Descripción" value={description} />}
+                    {vendedorRol && <PreviewRow label="Rol vendedor" value={vendedorRol} />}
+                    {escenarioObjetivo && <PreviewRow label="Objetivo" value={escenarioObjetivo} />}
+                    {empresaId && empresaList.find(e => e.id === empresaId) && (
+                      <PreviewRow label="Empresa" value={empresaList.find(e => e.id === empresaId)!.name} />
+                    )}
+                    {productoId && productoList.find(p => p.id === productoId) && (
+                      <PreviewRow label="Producto" value={productoList.find(p => p.id === productoId)!.name} />
+                    )}
                   </PreviewBlock>
 
                   <PreviewBlock label="Producto">
-                    <PreviewRow label="Nombre"     value={productName || "—"} />
-                    <PreviewRow label="Precio"     value={priceRange || "—"} />
+                    <PreviewRow label="Nombre" value={productName || "—"} />
+                    <PreviewRow label="Precio" value={priceRange || "—"} />
                     <PreviewRow label="Diferencial" value={keyDiff || "—"} />
                     {productTags.length > 0 && <PreviewRow label="Tags" value={productTags.join(", ")} />}
                   </PreviewBlock>
@@ -779,11 +879,11 @@ export default function ScenarioDetailedScreen() {
                     {objections.length === 0
                       ? <p className="text-xs text-slate-500">Sin objeciones definidas.</p>
                       : objections.map((o, i) => (
-                          <div key={i} className="border-b border-slate-700/50 pb-2 mb-2 last:border-0 last:pb-0 last:mb-0">
-                            <p className="text-xs text-slate-300">{o.objection || "—"}</p>
-                            {o.hint && <p className="text-xs text-slate-500 mt-0.5">Pista: {o.hint}</p>}
-                          </div>
-                        ))
+                        <div key={i} className="border-b border-slate-700/50 pb-2 mb-2 last:border-0 last:pb-0 last:mb-0">
+                          <p className="text-xs text-slate-300">{o.objection || "—"}</p>
+                          {o.hint && <p className="text-xs text-slate-500 mt-0.5">Pista: {o.hint}</p>}
+                        </div>
+                      ))
                     }
                   </PreviewBlock>
 
@@ -791,10 +891,10 @@ export default function ScenarioDetailedScreen() {
                     {faqItems.length === 0
                       ? <p className="text-xs text-slate-500">Sin preguntas definidas.</p>
                       : faqItems.slice(0, 4).map((f, i) => (
-                          <p key={i} className="text-xs text-slate-400 border-b border-slate-700/50 pb-1.5 mb-1.5 last:border-0">
-                            <span className="text-slate-300">Q:</span> {f.question || "—"}
-                          </p>
-                        ))
+                        <p key={i} className="text-xs text-slate-400 border-b border-slate-700/50 pb-1.5 mb-1.5 last:border-0">
+                          <span className="text-slate-300">Q:</span> {f.question || "—"}
+                        </p>
+                      ))
                     }
                     {faqItems.length > 4 && <p className="text-xs text-slate-500">+ {faqItems.length - 4} más</p>}
                   </PreviewBlock>
