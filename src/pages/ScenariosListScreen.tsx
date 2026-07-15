@@ -349,7 +349,15 @@ function ScenarioCard({
         </span>
       </div>
 
-      <p className="text-xs text-slate-400 leading-relaxed line-clamp-2 flex-1">{scenario.description}</p>
+      <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">{scenario.description}</p>
+
+      {/* Objetivo del escenario */}
+      {scenario.escenarioObjetivo && (
+        <p className="text-xs text-slate-300 leading-relaxed line-clamp-2">
+          <span className="text-slate-500 mr-1">🎯</span>
+          {scenario.escenarioObjetivo}
+        </p>
+      )}
 
       <div className="flex flex-wrap items-center gap-1.5">
         <span className={`text-xs px-2 py-0.5 rounded-full font-mono ${diff.color}`}>
@@ -358,6 +366,12 @@ function ScenarioCard({
         {industry && (
           <span className="text-xs px-2 py-0.5 rounded-full font-mono bg-slate-800 text-slate-400 border border-slate-700">
             {industry}
+          </span>
+        )}
+        {/* Rol del vendedor badge */}
+        {scenario.vendedorRol && (
+          <span className="text-xs px-2 py-0.5 rounded-full font-mono bg-indigo-950 text-indigo-300 border border-indigo-800">
+            {scenario.vendedorRol}
           </span>
         )}
         <span className={`text-xs px-2 py-0.5 rounded-full font-mono ${
@@ -401,6 +415,7 @@ function ScenarioCard({
     </div>
   );
 }
+
 
 function FilterSelect({
   value,
