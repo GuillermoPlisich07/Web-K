@@ -14,21 +14,6 @@ export default function ScenarioChoiceScreen() {
 
   return (
     <div className="min-h-screen bg-[#07080d] text-slate-100 flex flex-col">
-      <header className="border-b border-slate-800 px-8 py-5 flex items-center justify-between">
-        <button onClick={() => navigate("/scenarios")} className="text-left group">
-          <h1 className="font-display text-2xl font-bold text-white tracking-tight group-hover:text-accent transition-colors">
-            Ventas <span className="text-accent">IA</span>
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5 font-mono">Plataforma de entrenamiento</p>
-        </button>
-        <button
-          onClick={() => navigate("/scenarios")}
-          className="text-sm text-slate-400 hover:text-accent transition-colors"
-        >
-          ← Volver
-        </button>
-      </header>
-
       <main className="flex-1 flex flex-col items-center justify-center px-8 py-16">
         <div className="text-center mb-12">
           <h2 className="font-display text-3xl font-bold text-white mb-3">
@@ -109,6 +94,15 @@ export default function ScenarioChoiceScreen() {
               Crear escenario detallado →
             </button>
           </div>
+        </div>
+
+        <div className="w-full max-w-2xl flex justify-end mt-8">
+          <button
+            onClick={() => navigate("/scenarios")}
+            className="text-sm text-slate-400 hover:text-accent transition-colors"
+          >
+            ← Volver
+          </button>
         </div>
       </main>
     </div>

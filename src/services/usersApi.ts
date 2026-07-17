@@ -29,6 +29,27 @@ export interface UpdateUserRequest {
   enabled: boolean;
 }
 
+export interface QuickScenarioActivity {
+  id: string;
+  name: string;
+  createdAt: string;
+  enabled: boolean;
+  sessionCount: number;
+  avgScore: number | null;
+}
+
+export interface FullScenarioActivity {
+  id: string;
+  name: string;
+  completed: boolean;
+  lastCompletedAt: string | null;
+}
+
+export interface UserActivity {
+  quickScenarios: QuickScenarioActivity[];
+  fullScenarios: FullScenarioActivity[];
+}
+
 export async function listUsers(): Promise<ManagedUser[]> {
   const res = await apiFetch("/api/users");
   if (!res.ok) throw new Error("No se pudieron cargar los usuarios.");
@@ -68,4 +89,10 @@ export async function updateUser(id: string, req: UpdateUserRequest): Promise<Ma
 export async function deleteUser(id: string): Promise<void> {
   const res = await apiFetch(`/api/users/${id}`, { method: "DELETE" });
   if (!res.ok) throw new Error("No se pudo eliminar el usuario.");
+}
+
+export async function getUserActivity(id: string): Promise<UserActivity> {
+  const res = await apiFetch(`/api/users/${id}/activity`);
+  if (!res.ok) throw new Error("No se pudo cargar la actividad del usuario.");
+  return res.json();
 }

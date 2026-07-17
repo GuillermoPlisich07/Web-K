@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRole } from "../context/RoleContext";
 import { isReadOnlyRole } from "../lib/permissions";
 import EntityFormModal, { type EntityFormValues } from "../components/crud/EntityFormModal";
 import ConfirmDeleteModal from "../components/crud/ConfirmDeleteModal";
+import SearchInput from "../components/SearchInput";
 import {
   listProductos,
   createProducto,
@@ -24,6 +25,7 @@ export default function ProductsScreen() {
   const [formError, setFormError] = useState("");
   const [deleteModal, setDeleteModal] = useState<Producto | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     listProductos()
@@ -31,6 +33,16 @@ export default function ProductsScreen() {
       .catch(() => setError("No se pudieron cargar los productos."))
       .finally(() => setLoading(false));
   }, []);
+
+  const filteredProductos = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return productos;
+    return productos.filter((p) =>
+      p.name.toLowerCase().includes(term) ||
+      (p.description ?? "").toLowerCase().includes(term) ||
+      p.tags.some((t) => t.toLowerCase().includes(term))
+    );
+  }, [productos, search]);
 
   async function handleSubmit(values: EntityFormValues) {
     setSaving(true);
@@ -72,14 +84,17 @@ export default function ProductsScreen() {
           <h2 className="text-xl font-bold text-white tracking-tight mb-1">Productos</h2>
           <p className="text-sm text-slate-500">Catálogo de productos de la empresa</p>
         </div>
-        {!readOnly && (
-          <button
-            onClick={() => setFormModal("create")}
-            className="bg-accent hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg px-4 py-2 transition-colors"
-          >
-            + Nuevo producto
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          <SearchInput value={search} onChange={setSearch} placeholder="Buscar por nombre, descripción o tag..." />
+          {!readOnly && (
+            <button
+              onClick={() => setFormModal("create")}
+              className="bg-accent hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg px-4 py-2 transition-colors"
+            >
+              + Nuevo producto
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -102,9 +117,18 @@ export default function ProductsScreen() {
         </div>
       )}
 
-      {!loading && productos.length > 0 && (
+      {!loading && productos.length > 0 && filteredProductos.length === 0 && (
+        <div className="text-center py-20">
+          <p className="text-slate-500 text-sm mb-2">Ningún producto coincide con "{search}".</p>
+          <button onClick={() => setSearch("")} className="text-accent text-sm hover:underline">
+            Limpiar búsqueda
+          </button>
+        </div>
+      )}
+
+      {!loading && filteredProductos.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {productos.map((p) => (
+          {filteredProductos.map((p) => (
             <div key={p.id} className="bg-[#10111e] border border-slate-800 rounded-xl p-5 flex flex-col gap-2">
               <h3 className="font-display text-base font-bold text-white">{p.name}</h3>
               {p.description && <p className="text-sm text-slate-400 leading-relaxed">{p.description}</p>}

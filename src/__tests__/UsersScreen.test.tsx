@@ -30,9 +30,49 @@ const oneUser = [
   },
 ];
 
+const twoUsers = [
+  ...oneUser,
+  {
+    id: "2",
+    firstName: "Martín",
+    lastName: "Gómez",
+    email: "martin.gomez@konverza.com",
+    role: "ADMIN",
+    enabled: true,
+    createdAt: "2026-07-02T00:00:00",
+  },
+];
+
 function renderScreen(role: Role, items: unknown[] = oneUser) {
   seedRole(role);
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(items)));
+  return render(
+    <MemoryRouter>
+      <RoleProvider>
+        <UsersScreen />
+      </RoleProvider>
+    </MemoryRouter>
+  );
+}
+
+const sampleActivity = {
+  quickScenarios: [
+    { id: "q1", name: "Venta de CRM", createdAt: "2026-07-01T00:00:00", enabled: true, sessionCount: 3, avgScore: 7.5 },
+  ],
+  fullScenarios: [
+    { id: "f1", name: "Onboarding cliente enterprise", completed: true, lastCompletedAt: "2026-07-10T00:00:00" },
+    { id: "f2", name: "Renovación de contrato", completed: false, lastCompletedAt: null },
+  ],
+};
+
+function renderScreenWithActivity(role: Role, items: unknown[] = oneUser, activity: unknown = sampleActivity) {
+  seedRole(role);
+  vi.stubGlobal("fetch", vi.fn((url: unknown) => {
+    if (typeof url === "string" && url.includes("/activity")) {
+      return Promise.resolve(jsonResponse(activity));
+    }
+    return Promise.resolve(jsonResponse(items));
+  }));
   return render(
     <MemoryRouter>
       <RoleProvider>
@@ -105,5 +145,67 @@ describe("UsersScreen", () => {
     expect(screen.getByLabelText("Apellido")).toHaveValue("Perez");
     expect(screen.getByLabelText("Email")).toHaveValue("vendedor@konverza.com");
     expect(screen.getByLabelText("Nueva contraseña (opcional)")).toHaveValue("");
+  });
+
+  it("admin clicking a user row opens the activity panel with quick and full scenario data", async () => {
+    renderScreenWithActivity("admin");
+    await waitFor(() => expect(screen.getByText("Juana Perez")).toBeInTheDocument());
+
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Juana Perez"));
+
+    await waitFor(() => expect(screen.getByText("Venta de CRM")).toBeInTheDocument());
+    expect(screen.getByText("Escenarios Rápidos")).toBeInTheDocument();
+    expect(screen.getByText("Escenarios Completos")).toBeInTheDocument();
+    expect(screen.getByText("Onboarding cliente enterprise")).toBeInTheDocument();
+    expect(screen.getByText("Renovación de contrato")).toBeInTheDocument();
+  });
+
+  it("exec (Autoridad) can also open the read-only activity panel", async () => {
+    renderScreenWithActivity("exec");
+    await waitFor(() => expect(screen.getByText("Juana Perez")).toBeInTheDocument());
+
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Juana Perez"));
+
+    await waitFor(() => expect(screen.getByText("Venta de CRM")).toBeInTheDocument());
+  });
+
+  it("employee has no row-click affordance to open the activity panel", async () => {
+    renderScreenWithActivity("employee");
+    await waitFor(() => expect(screen.getByText("vendedor@konverza.com")).toBeInTheDocument());
+
+    const user = userEvent.setup();
+    await user.click(screen.getByText("vendedor@konverza.com"));
+
+    expect(screen.queryByText("Escenarios Rápidos")).not.toBeInTheDocument();
+  });
+
+  it("search narrows the list by name or email, and clearing restores it", async () => {
+    renderScreen("admin", twoUsers);
+    await waitFor(() => expect(screen.getByText("Juana Perez")).toBeInTheDocument());
+    expect(screen.getByText("Martín Gómez")).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.type(screen.getByPlaceholderText(/Buscar/i), "martin");
+
+    expect(screen.queryByText("Juana Perez")).not.toBeInTheDocument();
+    expect(screen.getByText("Martín Gómez")).toBeInTheDocument();
+
+    await user.clear(screen.getByPlaceholderText(/Buscar/i));
+    expect(screen.getByText("Juana Perez")).toBeInTheDocument();
+    expect(screen.getByText("Martín Gómez")).toBeInTheDocument();
+  });
+
+  it("shows a no-results message when the search matches no one", async () => {
+    renderScreen("admin", twoUsers);
+    await waitFor(() => expect(screen.getByText("Juana Perez")).toBeInTheDocument());
+
+    const user = userEvent.setup();
+    await user.type(screen.getByPlaceholderText(/Buscar/i), "no-existe-este-usuario");
+
+    expect(screen.queryByText("Juana Perez")).not.toBeInTheDocument();
+    expect(screen.queryByText("Martín Gómez")).not.toBeInTheDocument();
+    expect(screen.getByText(/Ningún usuario coincide con "no-existe-este-usuario"/)).toBeInTheDocument();
   });
 });

@@ -43,6 +43,12 @@ describe("ScenarioChoiceScreen", () => {
     expect(screen.getByText(/← Volver/i)).toBeInTheDocument();
   });
 
+  it("renders no top header bar", () => {
+    renderChoice();
+    expect(screen.queryByText("Ventas")).not.toBeInTheDocument();
+    expect(screen.queryByText("Plataforma de entrenamiento")).not.toBeInTheDocument();
+  });
+
   it("redirects employees straight to the express flow", () => {
     seedRole("employee");
     render(

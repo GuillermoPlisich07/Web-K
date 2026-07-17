@@ -296,22 +296,22 @@ export default function ScenarioDetailedScreen() {
 
   return (
     <div className="min-h-screen bg-[#07080d] text-slate-100 flex flex-col">
-      <header className="border-b border-slate-800 px-8 py-4 flex items-center justify-between shrink-0">
-        <button onClick={() => navigate("/scenarios")} className="text-left group">
-          <h1 className="font-display text-xl font-bold text-white tracking-tight group-hover:text-accent transition-colors">
-            Ventas <span className="text-accent">IA</span>
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5 font-mono">Plataforma de entrenamiento</p>
-        </button>
-        <div className="flex items-center gap-4">
-          <span className="text-xs text-slate-500 font-mono">
-            {isEdit ? "Editando escenario" : "Nuevo escenario completo"}
-          </span>
-          <button onClick={() => navigate("/scenarios")} className="text-sm text-slate-400 hover:text-accent transition-colors">
-            ← Volver
+      {isEdit && (
+        <header className="border-b border-slate-800 px-8 py-4 flex items-center justify-between shrink-0">
+          <button onClick={() => navigate("/scenarios")} className="text-left group">
+            <h1 className="font-display text-xl font-bold text-white tracking-tight group-hover:text-accent transition-colors">
+              Ventas <span className="text-accent">IA</span>
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5 font-mono">Plataforma de entrenamiento</p>
           </button>
-        </div>
-      </header>
+          <div className="flex items-center gap-4">
+            <span className="text-xs text-slate-500 font-mono">Editando escenario</span>
+            <button onClick={() => navigate("/scenarios")} className="text-sm text-slate-400 hover:text-accent transition-colors">
+              ← Volver
+            </button>
+          </div>
+        </header>
+      )}
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
@@ -346,6 +346,14 @@ export default function ScenarioDetailedScreen() {
             >
               {saving ? "Guardando..." : "Guardar escenario"}
             </button>
+            {!isEdit && (
+              <button
+                onClick={() => navigate("/scenarios/new")}
+                className="w-full text-center text-sm text-slate-400 hover:text-accent transition-colors py-1"
+              >
+                ← Cancelar
+              </button>
+            )}
           </div>
         </aside>
 

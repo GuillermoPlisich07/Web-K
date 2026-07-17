@@ -34,6 +34,22 @@ const oneItem = [
   },
 ];
 
+const twoItems = [
+  ...oneItem,
+  {
+    id: "2",
+    name: "Facturación Cloud",
+    description: "Facturación electrónica en la nube",
+    context: "Contexto",
+    priceRange: "",
+    keyDifferentiator: "",
+    paymentInfo: "",
+    tags: ["fintech"],
+    createdAt: "2026-07-02T00:00:00",
+    updatedAt: "2026-07-02T00:00:00",
+  },
+];
+
 function renderScreen(Component: typeof ProductsScreen, role: Role, items: unknown[]) {
   seedRole(role);
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(items)));
@@ -102,5 +118,37 @@ describe.each([
     expect(screen.getByDisplayValue("Mensual o anual con 20% de descuento")).toBeInTheDocument();
     expect(screen.getAllByText("b2b").length).toBeGreaterThan(0);
     expect(screen.getAllByText("saas").length).toBeGreaterThan(0);
+  });
+
+  it("search narrows the list by name, and clearing restores it", async () => {
+    renderScreen(Component, "admin", twoItems);
+    await waitFor(() => expect(screen.getByText("CRM")).toBeInTheDocument());
+    expect(screen.getByText("Facturación Cloud")).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.type(screen.getByPlaceholderText(/Buscar/i), "factur");
+
+    expect(screen.queryByText("CRM")).not.toBeInTheDocument();
+    expect(screen.getByText("Facturación Cloud")).toBeInTheDocument();
+
+    await user.clear(screen.getByPlaceholderText(/Buscar/i));
+    expect(screen.getByText("CRM")).toBeInTheDocument();
+    expect(screen.getByText("Facturación Cloud")).toBeInTheDocument();
+  });
+
+  it("search also matches tags, and shows a no-results message when nothing matches", async () => {
+    renderScreen(Component, "admin", twoItems);
+    await waitFor(() => expect(screen.getByText("CRM")).toBeInTheDocument());
+
+    const user = userEvent.setup();
+    await user.type(screen.getByPlaceholderText(/Buscar/i), "fintech");
+    expect(screen.getByText("Facturación Cloud")).toBeInTheDocument();
+    expect(screen.queryByText("CRM")).not.toBeInTheDocument();
+
+    await user.clear(screen.getByPlaceholderText(/Buscar/i));
+    await user.type(screen.getByPlaceholderText(/Buscar/i), "no-existe-esto");
+    expect(screen.queryByText("CRM")).not.toBeInTheDocument();
+    expect(screen.queryByText("Facturación Cloud")).not.toBeInTheDocument();
+    expect(screen.getByText(/Ningún .* coincide con "no-existe-esto"/)).toBeInTheDocument();
   });
 });

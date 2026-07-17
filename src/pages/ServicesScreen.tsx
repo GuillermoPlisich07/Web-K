@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRole } from "../context/RoleContext";
 import { isReadOnlyRole } from "../lib/permissions";
 import EntityFormModal, { type EntityFormValues } from "../components/crud/EntityFormModal";
 import ConfirmDeleteModal from "../components/crud/ConfirmDeleteModal";
+import SearchInput from "../components/SearchInput";
 import {
   listServicios,
   createServicio,
@@ -24,6 +25,7 @@ export default function ServicesScreen() {
   const [formError, setFormError] = useState("");
   const [deleteModal, setDeleteModal] = useState<Servicio | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     listServicios()
@@ -31,6 +33,16 @@ export default function ServicesScreen() {
       .catch(() => setError("No se pudieron cargar los servicios."))
       .finally(() => setLoading(false));
   }, []);
+
+  const filteredServicios = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return servicios;
+    return servicios.filter((s) =>
+      s.name.toLowerCase().includes(term) ||
+      (s.description ?? "").toLowerCase().includes(term) ||
+      s.tags.some((t) => t.toLowerCase().includes(term))
+    );
+  }, [servicios, search]);
 
   async function handleSubmit(values: EntityFormValues) {
     setSaving(true);
@@ -72,14 +84,17 @@ export default function ServicesScreen() {
           <h2 className="text-xl font-bold text-white tracking-tight mb-1">Servicios</h2>
           <p className="text-sm text-slate-500">Catálogo de servicios de la empresa</p>
         </div>
-        {!readOnly && (
-          <button
-            onClick={() => setFormModal("create")}
-            className="bg-accent hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg px-4 py-2 transition-colors"
-          >
-            + Nuevo servicio
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          <SearchInput value={search} onChange={setSearch} placeholder="Buscar por nombre, descripción o tag..." />
+          {!readOnly && (
+            <button
+              onClick={() => setFormModal("create")}
+              className="bg-accent hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg px-4 py-2 transition-colors"
+            >
+              + Nuevo servicio
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -102,9 +117,18 @@ export default function ServicesScreen() {
         </div>
       )}
 
-      {!loading && servicios.length > 0 && (
+      {!loading && servicios.length > 0 && filteredServicios.length === 0 && (
+        <div className="text-center py-20">
+          <p className="text-slate-500 text-sm mb-2">Ningún servicio coincide con "{search}".</p>
+          <button onClick={() => setSearch("")} className="text-accent text-sm hover:underline">
+            Limpiar búsqueda
+          </button>
+        </div>
+      )}
+
+      {!loading && filteredServicios.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {servicios.map((s) => (
+          {filteredServicios.map((s) => (
             <div key={s.id} className="bg-[#10111e] border border-slate-800 rounded-xl p-5 flex flex-col gap-2">
               <h3 className="font-display text-base font-bold text-white">{s.name}</h3>
               {s.description && <p className="text-sm text-slate-400 leading-relaxed">{s.description}</p>}

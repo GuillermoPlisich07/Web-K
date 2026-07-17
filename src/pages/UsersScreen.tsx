@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { useRole } from "../context/RoleContext";
 import { isReadOnlyRole } from "../lib/permissions";
 import { GRAD } from "../lib/theme";
 import UserFormModal from "../components/crud/UserFormModal";
 import ConfirmDeleteModal from "../components/crud/ConfirmDeleteModal";
+import UserActivityPanel from "../components/crud/UserActivityPanel";
+import SearchInput from "../components/SearchInput";
 import {
   listUsers,
   createUser,
@@ -49,6 +51,10 @@ export default function UsersScreen() {
   const [formError, setFormError] = useState("");
   const [deleteModal, setDeleteModal] = useState<ManagedUser | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [activityUser, setActivityUser] = useState<ManagedUser | null>(null);
+  const [search, setSearch] = useState("");
+
+  const canViewActivity = role === "admin" || role === "exec";
 
   useEffect(() => {
     listUsers()
@@ -56,6 +62,16 @@ export default function UsersScreen() {
       .catch(() => setError("No se pudieron cargar los usuarios."))
       .finally(() => setLoading(false));
   }, []);
+
+  const filteredUsers = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return users;
+    return users.filter((u) =>
+      u.firstName.toLowerCase().includes(term) ||
+      u.lastName.toLowerCase().includes(term) ||
+      u.email.toLowerCase().includes(term)
+    );
+  }, [users, search]);
 
   async function handleCreate(values: { firstName: string; lastName: string; email: string; password: string; role: UserRole }) {
     setSaving(true);
@@ -109,14 +125,17 @@ export default function UsersScreen() {
           <h2 className="text-xl font-bold text-white tracking-tight mb-1">Usuarios</h2>
           <p className="text-sm text-slate-500">Cuentas de acceso a Konverza</p>
         </div>
-        {!readOnly && (
-          <button
-            onClick={() => setFormModal("create")}
-            className="bg-accent hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg px-4 py-2 transition-colors"
-          >
-            + Nuevo usuario
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          <SearchInput value={search} onChange={setSearch} placeholder="Buscar por nombre o email..." />
+          {!readOnly && (
+            <button
+              onClick={() => setFormModal("create")}
+              className="bg-accent hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg px-4 py-2 transition-colors"
+            >
+              + Nuevo usuario
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (
@@ -139,7 +158,16 @@ export default function UsersScreen() {
         </div>
       )}
 
-      {!loading && users.length > 0 && (
+      {!loading && users.length > 0 && filteredUsers.length === 0 && (
+        <div className="text-center py-20">
+          <p className="text-slate-500 text-sm mb-2">Ningún usuario coincide con "{search}".</p>
+          <button onClick={() => setSearch("")} className="text-accent text-sm hover:underline">
+            Limpiar búsqueda
+          </button>
+        </div>
+      )}
+
+      {!loading && filteredUsers.length > 0 && (
         <div className="bg-[#10111e] border border-slate-800 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
@@ -151,10 +179,11 @@ export default function UsersScreen() {
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
+              {filteredUsers.map((u) => (
                 <tr
                   key={u.id}
-                  className="border-b border-slate-800 last:border-0 transition-colors duration-100 hover:bg-white/[0.03]"
+                  onClick={canViewActivity ? () => setActivityUser(u) : undefined}
+                  className={`border-b border-slate-800 last:border-0 transition-colors duration-100 hover:bg-white/[0.03] ${canViewActivity ? "cursor-pointer" : ""}`}
                 >
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2.5">
@@ -197,14 +226,14 @@ export default function UsersScreen() {
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-1">
                         <button
-                          onClick={() => setFormModal(u)}
+                          onClick={(e) => { e.stopPropagation(); setFormModal(u); }}
                           aria-label="Editar"
                           className="w-7 h-7 flex items-center justify-center rounded cursor-pointer transition-colors hover:bg-white/5 text-[#7F8899] hover:text-white"
                         >
                           <Pencil size={13} />
                         </button>
                         <button
-                          onClick={() => setDeleteModal(u)}
+                          onClick={(e) => { e.stopPropagation(); setDeleteModal(u); }}
                           aria-label="Eliminar"
                           className="w-7 h-7 flex items-center justify-center rounded cursor-pointer transition-colors hover:bg-white/5 text-[#7F8899] hover:text-red-400"
                         >
@@ -252,6 +281,10 @@ export default function UsersScreen() {
           onCancel={() => setDeleteModal(null)}
           onConfirm={handleDelete}
         />
+      )}
+
+      {activityUser && canViewActivity && (
+        <UserActivityPanel user={activityUser} onClose={() => setActivityUser(null)} />
       )}
     </main>
   );

@@ -173,17 +173,6 @@ export default function ScenarioExpressScreen() {
   // ── FORM ──────────────────────────────────────────────────────────
   if (step === "form") return (
     <div className="min-h-screen bg-[#07080d] text-slate-100 flex flex-col">
-      <header className="border-b border-slate-800 px-8 py-5 flex items-center justify-between">
-        <button onClick={() => navigate("/scenarios/new")} className="text-left group">
-          <h1 className="font-display text-2xl font-bold text-white tracking-tight group-hover:text-accent transition-colors">
-            Ventas <span className="text-accent">IA</span>
-          </h1>
-        </button>
-        <button onClick={() => navigate("/scenarios/new")} className="text-sm text-slate-400 hover:text-accent transition-colors">
-          ← Volver
-        </button>
-      </header>
-
       <main className="flex-1 max-w-2xl mx-auto w-full px-8 py-12">
         <div className="mb-10">
           <div className="flex items-center gap-3 mb-3">
@@ -329,6 +318,15 @@ export default function ScenarioExpressScreen() {
         >
           Generar escenario →
         </button>
+
+        <div className="flex justify-end mt-6">
+          <button
+            onClick={() => navigate("/scenarios/new")}
+            className="text-sm text-slate-400 hover:text-accent transition-colors"
+          >
+            ← Cancelar
+          </button>
+        </div>
       </main>
     </div>
   );
@@ -361,20 +359,12 @@ export default function ScenarioExpressScreen() {
   // ── REVIEW ────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#07080d] text-slate-100 flex flex-col">
-      <header className="border-b border-slate-800 px-8 py-5 flex items-center justify-between">
-        <div>
+      <main className="flex-1 max-w-3xl mx-auto w-full px-8 py-10 space-y-4">
+        <div className="mb-2">
           <h1 className="font-display text-xl font-bold text-white">Revisión del escenario generado</h1>
           <p className="text-xs text-slate-500 font-mono mt-0.5">{scenario?.name}</p>
         </div>
-        <button
-          onClick={() => setStep("form")}
-          className="text-sm text-slate-400 hover:text-accent transition-colors"
-        >
-          ← Reconfigurar
-        </button>
-      </header>
 
-      <main className="flex-1 max-w-3xl mx-auto w-full px-8 py-10 space-y-4">
         {apiError && (
           <div className="bg-red-950 border border-red-800 rounded-lg px-4 py-3 text-red-300 text-sm">
             {apiError}
@@ -500,7 +490,13 @@ export default function ScenarioExpressScreen() {
         </ReviewSection>
 
         {/* Botones finales */}
-        <div className="flex gap-3 pt-4 pb-8">
+        <div className="flex items-center gap-3 pt-4 pb-8">
+          <button
+            onClick={() => navigate("/scenarios/new")}
+            className="text-sm text-slate-400 hover:text-accent transition-colors mr-auto"
+          >
+            ← Cancelar
+          </button>
           <button
             onClick={() => setStep("form")}
             className="flex-1 border border-slate-700 text-slate-300 hover:text-white text-sm rounded-xl py-3 transition-colors"
