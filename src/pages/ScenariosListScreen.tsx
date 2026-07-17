@@ -8,6 +8,16 @@ import { getVendorName, setVendorName as persistVendorName } from "../lib/identi
 import { apiFetch } from "../services/apiClient";
 import { isReadOnlyRole } from "../lib/permissions";
 
+async function setScenarioEnabled(id: string, enabled: boolean): Promise<Scenario> {
+  const res = await apiFetch(`/api/scenarios/${id}/enabled`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  });
+  if (!res.ok) throw new Error("No se pudo actualizar el estado del escenario.");
+  return res.json();
+}
+
 const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL ?? "http://localhost:8000";
 
 const personaBadge: Record<ClientPersona, { label: string; color: string }> = {
@@ -99,19 +109,14 @@ export default function ScenariosListScreen() {
       .catch(() => { setError("No se pudo conectar con el servidor."); setLoading(false); });
   }, []);
 
-  // Los empleados solo ven sus propios escenarios rápidos; admin/exec ven todo.
-  const scopedScenarios = useMemo(() => {
-    if (role !== "employee") return scenarios;
-    const me = getVendorName();
-    return scenarios.filter((s) => s.createdBy === "EXPRESS_AI" && s.ownerName === me);
-  }, [scenarios, role]);
-
-  const filtered = useMemo(() => scopedScenarios.filter((s) => {
+  // El backend ya escopa la lista (propios escenarios rápidos + completos activos,
+  // o todos los completos para admin) — scenario-privacy-and-lifecycle.
+  const filtered = useMemo(() => scenarios.filter((s) => {
     if (filterPersona    !== "ALL" && s.clientPersona !== filterPersona)    return false;
     if (filterDifficulty !== "ALL" && s.difficulty    !== filterDifficulty) return false;
     if (filterIndustry   !== "ALL" && s.industry      !== filterIndustry)   return false;
     return true;
-  }), [scopedScenarios, filterPersona, filterDifficulty, filterIndustry]);
+  }), [scenarios, filterPersona, filterDifficulty, filterIndustry]);
 
   async function handleStartTraining() {
     if (!vendorName.trim()) { setStartError("Ingresá tu nombre."); return; }
@@ -156,6 +161,15 @@ export default function ScenariosListScreen() {
     }
   }
 
+  async function handleToggleEnabled(scenario: Scenario) {
+    try {
+      const updated = await setScenarioEnabled(scenario.id, !scenario.enabled);
+      setScenarios((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+    } catch {
+      setError("No se pudo actualizar el estado del escenario.");
+    }
+  }
+
   async function handleDelete() {
     if (!deleteModal) return;
     setDeleting(true);
@@ -181,7 +195,7 @@ export default function ScenariosListScreen() {
             <p className="text-sm text-slate-400 mt-1">
               {loading
                 ? "Cargando..."
-                : `${filtered.length} de ${scopedScenarios.length} escenario${scopedScenarios.length !== 1 ? "s" : ""}`}
+                : `${filtered.length} de ${scenarios.length} escenario${scenarios.length !== 1 ? "s" : ""}`}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -241,7 +255,12 @@ export default function ScenariosListScreen() {
                 scenario={scenario}
                 onTrain={() => { setTrainModal(scenario); setVendorName(""); setStartError(""); }}
                 onEdit={role === "admin" ? () => navigate(`/scenarios/${scenario.id}/edit`) : undefined}
-                onDelete={role === "admin" && scenario.createdBy === "EXPRESS_AI" ? () => setDeleteModal(scenario) : undefined}
+                onDelete={role === "admin" ? () => setDeleteModal(scenario) : undefined}
+                onToggleEnabled={
+                  role === "admin" && scenario.createdBy === "MANUAL"
+                    ? () => handleToggleEnabled(scenario)
+                    : undefined
+                }
               />
             ))}
           </div>
@@ -334,11 +353,13 @@ function ScenarioCard({
   onTrain,
   onEdit,
   onDelete,
+  onToggleEnabled,
 }: {
   scenario: Scenario;
   onTrain: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onToggleEnabled?: () => void;
 }) {
   const persona  = personaBadge[scenario.clientPersona];
   const diff     = difficultyBadge[scenario.difficulty];
@@ -353,6 +374,12 @@ function ScenarioCard({
           {persona.label}
         </span>
       </div>
+
+      {!scenario.enabled && (
+        <span className="self-start text-[10px] px-2 py-0.5 rounded-full font-mono bg-red-950 text-red-400 border border-red-800">
+          Desactivado
+        </span>
+      )}
 
       <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">{scenario.description}</p>
 
@@ -395,7 +422,8 @@ function ScenarioCard({
       <div className="flex gap-2 pt-1">
         <button
           onClick={onTrain}
-          className="flex-1 bg-accent hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg py-2 transition-colors"
+          disabled={!scenario.enabled}
+          className="flex-1 bg-accent hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-lg py-2 transition-colors"
         >
           Entrenar
         </button>
@@ -405,6 +433,15 @@ function ScenarioCard({
             className="flex-1 bg-[#10111e] hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs rounded-lg py-2 transition-colors"
           >
             Editar
+          </button>
+        )}
+        {onToggleEnabled && (
+          <button
+            onClick={onToggleEnabled}
+            className="bg-[#10111e] hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white text-xs rounded-lg px-2.5 py-2 transition-colors"
+            title={scenario.enabled ? "Desactivar escenario" : "Activar escenario"}
+          >
+            {scenario.enabled ? "Desactivar" : "Activar"}
           </button>
         )}
         {onDelete && (

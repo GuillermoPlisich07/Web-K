@@ -1,14 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ClientPersona, Difficulty, Industry, Scenario } from "../types";
-import { getVendorName, setVendorName } from "../lib/identity";
 import { apiFetch } from "../services/apiClient";
 import { INDUSTRIES } from "../lib/industries";
 
 type Step = "form" | "loading" | "review";
 
 interface FormData {
-  ownerName: string;
   name: string;
   industry: Industry | "";
   clientPersona: ClientPersona | "";
@@ -45,7 +43,7 @@ export default function ScenarioExpressScreen() {
   const [apiError, setApiError] = useState("");
 
   const [form, setForm] = useState<FormData>({
-    ownerName: getVendorName(), name: "", industry: "", clientPersona: "", difficulty: "",
+    name: "", industry: "", clientPersona: "", difficulty: "",
     productName: "", priceRange: "", keyDifferentiator: "",
   });
   const [productDescription, setProductDescription] = useState("");
@@ -71,7 +69,6 @@ export default function ScenarioExpressScreen() {
 
   function validate(): boolean {
     const e: typeof errors = {};
-    if (!form.ownerName.trim())       e.ownerName = "Requerido";
     if (!form.name.trim())            e.name = "Requerido";
     if (!form.industry)               e.industry = "Seleccioná una industria";
     if (!form.clientPersona)          e.clientPersona = "Seleccioná un tipo de cliente";
@@ -86,7 +83,6 @@ export default function ScenarioExpressScreen() {
 
   async function handleGenerate() {
     if (!validate()) return;
-    setVendorName(form.ownerName);
     setStep("loading");
     setApiError("");
     try {
@@ -94,7 +90,6 @@ export default function ScenarioExpressScreen() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ownerName: form.ownerName.trim(),
           name: form.name,
           industry: form.industry,
           clientPersona: form.clientPersona,
@@ -206,17 +201,6 @@ export default function ScenarioExpressScreen() {
         )}
 
         <div className="space-y-8">
-          {/* Tu nombre */}
-          <Field label="Tu nombre" error={errors.ownerName}>
-            <input
-              type="text"
-              value={form.ownerName}
-              onChange={(e) => setForm({ ...form, ownerName: e.target.value })}
-              placeholder="Ej: Martín González"
-              className={inputCls(!!errors.ownerName)}
-            />
-          </Field>
-
           {/* Nombre */}
           <Field label="Nombre del escenario" error={errors.name}>
             <div className="relative">

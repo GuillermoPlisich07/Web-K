@@ -26,7 +26,10 @@ export interface Scenario {
   evaluationWeights?: string;
   forbiddenPhrases?: string;
   createdBy?: string;
+  /** Server-derived display name of the real creator — read-only, not settable on create/update. */
   ownerName?: string;
+  createdByUserId?: string;
+  enabled: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
