@@ -13,6 +13,8 @@ export interface Scenario {
   productContext?: string;
   /** Pure behaviour/persona profile of the client avatar */
   systemPrompt?: string;
+  /** The assembled XML-CREST system prompt returned by the backend */
+  compiledSystemPrompt?: string;
   vendedorRol?: string;
   escenarioObjetivo?: string;
   empresaId?: string;
