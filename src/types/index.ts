@@ -21,7 +21,7 @@ export interface Scenario {
   avatarVoiceId?: string;
   objectionsGuide?: string;
   faq?: string;
-  industry?: Industry;
+  industries?: Industry[];
   maxDurationMinutes?: number;
   evaluationWeights?: string;
   forbiddenPhrases?: string;

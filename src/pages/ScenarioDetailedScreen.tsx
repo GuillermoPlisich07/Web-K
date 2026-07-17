@@ -38,7 +38,7 @@ const WEIGHT_LABELS: Record<keyof Weights, string> = {
 
 const INDUSTRY_OPTIONS: { value: Industry; label: string }[] = [
   { value: "SOFTWARE_B2B", label: "Software B2B" },
-  { value: "FINANZAS", label: "Finanzas" },
+  { value: "FINANZAS", label: "Servicios financieros" },
   { value: "CONSULTORIA", label: "Consultoría" },
   { value: "TELCO", label: "Telecom" },
   { value: "SEGUROS", label: "Seguros" },
@@ -75,7 +75,7 @@ export default function ScenarioDetailedScreen() {
   // identity
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [industry, setIndustry] = useState<Industry | "">("");
+  const [industries, setIndustries] = useState<Industry[]>([]);
   const [clientPersona, setClientPersona] = useState<ClientPersona | "">("");
   const [difficulty, setDifficulty] = useState<Difficulty | "">("");
   const [maxDurationMinutes, setMaxDurationMinutes] = useState(30);
@@ -111,7 +111,12 @@ export default function ScenarioDetailedScreen() {
   const fetchContextLists = useCallback(() => {
     apiFetch("/api/empresa")
       .then(r => r.ok ? r.json() : null)
-      .then(e => { if (e?.id) setEmpresaList([{ id: e.id, name: e.name }]); })
+      .then(e => {
+        if (e?.id) {
+          setEmpresaList([{ id: e.id, name: e.name }]);
+          if (!isEdit) setIndustries(e.industries ?? []);
+        }
+      })
       .catch(() => { /* not critical — dropdowns just stay empty */ });
     apiFetch("/api/productos")
       .then(r => r.ok ? r.json() : [])
@@ -128,7 +133,7 @@ export default function ScenarioDetailedScreen() {
       .then(s => {
         setName(s.name ?? "");
         setDescription(s.description ?? "");
-        setIndustry(s.industry ?? "");
+        setIndustries(s.industries ?? []);
         setClientPersona(s.clientPersona ?? "");
         setDifficulty(s.difficulty ?? "");
         setMaxDurationMinutes(s.maxDurationMinutes ?? 30);
@@ -153,7 +158,7 @@ export default function ScenarioDetailedScreen() {
       description,
       clientPersona: clientPersona || "INDIFFERENT",
       difficulty: difficulty || "MEDIUM",
-      ...(industry ? { industry } : {}),
+      industries,
       maxDurationMinutes,
       systemPrompt,
       objectionsGuide: JSON.stringify(objections),
@@ -372,8 +377,8 @@ export default function ScenarioDetailedScreen() {
                     {INDUSTRY_OPTIONS.map(o => (
                       <button
                         key={o.value}
-                        onClick={() => setIndustry(industry === o.value ? "" : o.value)}
-                        className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${industry === o.value
+                        onClick={() => setIndustries(prev => prev.includes(o.value) ? prev.filter(i => i !== o.value) : [...prev, o.value])}
+                        className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${industries.includes(o.value)
                             ? "border-accent bg-accent/20 text-white"
                             : "border-slate-700 bg-slate-800/50 text-slate-400 hover:border-slate-500"
                           }`}
@@ -769,7 +774,7 @@ export default function ScenarioDetailedScreen() {
                 <div className="space-y-4">
                   <PreviewBlock label="Identidad">
                     <PreviewRow label="Nombre" value={name || "—"} />
-                    <PreviewRow label="Industria" value={industry || "—"} />
+                    <PreviewRow label="Industrias" value={industries.length > 0 ? industries.join(", ") : "—"} />
                     <PreviewRow label="Cliente" value={clientPersona || "—"} />
                     <PreviewRow label="Dificultad" value={difficulty || "—"} />
                     <PreviewRow label="Duración" value={`${maxDurationMinutes} min`} />

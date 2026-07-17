@@ -25,7 +25,7 @@ const difficultyBadge: Record<Difficulty, { label: string; color: string }> = {
 
 const industryLabel: Partial<Record<Industry, string>> = {
   SOFTWARE_B2B: "Software B2B",
-  FINANZAS:     "Finanzas",
+  FINANZAS:     "Servicios financieros",
   CONSULTORIA:  "Consultoría",
   TELCO:        "Telecomunicaciones",
   SEGUROS:      "Seguros",
@@ -52,7 +52,7 @@ const DIFFICULTY_OPTIONS: { value: Difficulty | "ALL"; label: string }[] = [
 const INDUSTRY_OPTIONS: { value: Industry | "ALL"; label: string }[] = [
   { value: "ALL",          label: "Toda industria" },
   { value: "SOFTWARE_B2B", label: "Software B2B" },
-  { value: "FINANZAS",     label: "Finanzas" },
+  { value: "FINANZAS",     label: "Servicios financieros" },
   { value: "CONSULTORIA",  label: "Consultoría" },
   { value: "TELCO",        label: "Telecomunicaciones" },
   { value: "SEGUROS",      label: "Seguros" },
