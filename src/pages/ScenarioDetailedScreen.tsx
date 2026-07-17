@@ -10,11 +10,10 @@ interface ProductoOption { id: string; name: string }
 
 const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL ?? "http://localhost:8000";
 
-type SectionKey = "identity" | "product" | "persona" | "objections" | "faq" | "evaluation" | "voice" | "preview";
+type SectionKey = "identity" | "persona" | "objections" | "faq" | "evaluation" | "voice" | "preview";
 
 const SECTIONS: { key: SectionKey; label: string }[] = [
   { key: "identity", label: "Identidad" },
-  { key: "product", label: "Contexto del producto" },
   { key: "persona", label: "Personalidad del cliente" },
   { key: "objections", label: "Objeciones" },
   { key: "faq", label: "FAQ" },
@@ -81,14 +80,6 @@ export default function ScenarioDetailedScreen() {
   const [difficulty, setDifficulty] = useState<Difficulty | "">("");
   const [maxDurationMinutes, setMaxDurationMinutes] = useState(30);
 
-  // product
-  const [productName, setProductName] = useState("");
-  const [productDesc, setProductDesc] = useState("");
-  const [priceRange, setPriceRange] = useState("");
-  const [keyDiff, setKeyDiff] = useState("");
-  const [paymentInfo, setPaymentInfo] = useState("");
-  const [productTags, setProductTags] = useState<string[]>([]);
-
   // persona
   const [systemPrompt, setSystemPrompt] = useState("");
 
@@ -143,21 +134,10 @@ export default function ScenarioDetailedScreen() {
         setMaxDurationMinutes(s.maxDurationMinutes ?? 30);
         setSystemPrompt(s.systemPrompt ?? "");
         setAvatarVoiceId(s.avatarVoiceId ?? "");
-        setPaymentInfo(s.paymentInfo ?? "");
         setVendedorRol(s.vendedorRol ?? "");
         setEscenarioObjetivo(s.escenarioObjetivo ?? "");
         setEmpresaId(s.empresaId ?? "");
         setProductoId(s.productoId ?? "");
-        try {
-          const pc = JSON.parse(s.productContext ?? "{}");
-          setProductName(pc.productName ?? "");
-          setProductDesc(pc.productDescription ?? "");
-          setPriceRange(pc.priceRange ?? "");
-          setKeyDiff(pc.keyDifferentiator ?? "");
-          setProductTags(pc.tags ?? []);
-        } catch {
-          setProductDesc(s.productContext ?? "");
-        }
         try { const o = JSON.parse(s.objectionsGuide ?? "[]"); setObjections(Array.isArray(o) ? o : []); } catch { setObjections([]); }
         try { const f = JSON.parse(s.faq ?? "[]"); setFaqItems(Array.isArray(f) ? f : []); } catch { setFaqItems([]); }
         try { const w = JSON.parse(s.evaluationWeights ?? "{}"); setWeights({ ...DEFAULT_WEIGHTS, ...w }); } catch { setWeights(DEFAULT_WEIGHTS); }
@@ -175,11 +155,9 @@ export default function ScenarioDetailedScreen() {
       difficulty: difficulty || "MEDIUM",
       ...(industry ? { industry } : {}),
       maxDurationMinutes,
-      productContext: JSON.stringify({ productName, productDescription: productDesc, priceRange, keyDifferentiator: keyDiff, tags: productTags }),
       systemPrompt,
       objectionsGuide: JSON.stringify(objections),
       faq: JSON.stringify(faqItems),
-      paymentInfo,
       evaluationWeights: JSON.stringify(weights),
       forbiddenPhrases: JSON.stringify(forbiddenPhrases),
       avatarVoiceId,
@@ -292,7 +270,6 @@ export default function ScenarioDetailedScreen() {
   function isComplete(key: SectionKey): boolean {
     switch (key) {
       case "identity": return !!name.trim() && !!clientPersona && !!difficulty;
-      case "product": return !!productName.trim();
       case "persona": return wordCount >= 30;
       case "objections": return objections.length > 0;
       case "faq": return faqItems.length > 0;
@@ -510,41 +487,7 @@ export default function ScenarioDetailedScreen() {
                   </Field>
                 </div>
 
-                <NavButtons label="Siguiente: Contexto del producto →" onNext={() => setActiveSection("product")} />
-              </section>
-            )}
-
-            {/* 2. PRODUCTO */}
-            {activeSection === "product" && (
-              <section className="space-y-6">
-                <SectionHeader title="Contexto del producto" sub="Información que el vendedor puede consultar durante el entrenamiento." />
-
-                <Field label="Nombre del producto / servicio *">
-                  <input value={productName} onChange={e => setProductName(e.target.value)} placeholder="Ej: SalesForce CRM Pro" className="field-input" />
-                </Field>
-
-                <Field label="Descripción del producto">
-                  <textarea value={productDesc} onChange={e => setProductDesc(e.target.value)} rows={4} placeholder="¿Qué es, qué problema resuelve, para quién es?" className="field-input resize-none" />
-                </Field>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Field label="Rango de precio">
-                    <input value={priceRange} onChange={e => setPriceRange(e.target.value)} placeholder="USD 500–1200/mes" className="field-input" />
-                  </Field>
-                  <Field label="Diferencial clave">
-                    <input value={keyDiff} onChange={e => setKeyDiff(e.target.value)} placeholder="¿Por qué nos eligen?" className="field-input" />
-                  </Field>
-                </div>
-
-                <Field label="Formas de pago y financiación">
-                  <textarea value={paymentInfo} onChange={e => setPaymentInfo(e.target.value)} rows={2} placeholder="Anual con descuento 20%, mensual, 6 cuotas sin interés..." className="field-input resize-none" />
-                </Field>
-
-                <Field label="Tags / palabras clave">
-                  <TagInput tags={productTags} onChange={setProductTags} />
-                </Field>
-
-                <NavButtons onPrev={() => setActiveSection("identity")} label="Siguiente: Personalidad →" onNext={() => setActiveSection("persona")} />
+                <NavButtons label="Siguiente: Personalidad →" onNext={() => setActiveSection("persona")} />
               </section>
             )}
 
@@ -579,7 +522,7 @@ export default function ScenarioDetailedScreen() {
                   </div>
                 </div>
 
-                <NavButtons onPrev={() => setActiveSection("product")} label="Siguiente: Objeciones →" onNext={() => setActiveSection("objections")} />
+                <NavButtons onPrev={() => setActiveSection("identity")} label="Siguiente: Objeciones →" onNext={() => setActiveSection("objections")} />
               </section>
             )}
 
@@ -841,12 +784,7 @@ export default function ScenarioDetailedScreen() {
                     )}
                   </PreviewBlock>
 
-                  <PreviewBlock label="Producto">
-                    <PreviewRow label="Nombre" value={productName || "—"} />
-                    <PreviewRow label="Precio" value={priceRange || "—"} />
-                    <PreviewRow label="Diferencial" value={keyDiff || "—"} />
-                    {productTags.length > 0 && <PreviewRow label="Tags" value={productTags.join(", ")} />}
-                  </PreviewBlock>
+
 
                   <PreviewBlock label="System prompt">
                     <p className="text-xs text-slate-400 whitespace-pre-wrap font-mono leading-relaxed max-h-40 overflow-y-auto">
