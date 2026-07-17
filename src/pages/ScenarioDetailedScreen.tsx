@@ -10,11 +10,10 @@ interface ProductoOption { id: string; name: string }
 
 const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL ?? "http://localhost:8000";
 
-type SectionKey = "identity" | "product" | "persona" | "objections" | "faq" | "evaluation" | "voice" | "preview";
+type SectionKey = "identity" | "persona" | "objections" | "faq" | "evaluation" | "voice" | "preview";
 
 const SECTIONS: { key: SectionKey; label: string }[] = [
   { key: "identity", label: "Identidad" },
-  { key: "product", label: "Contexto del producto" },
   { key: "persona", label: "Personalidad del cliente" },
   { key: "objections", label: "Objeciones" },
   { key: "faq", label: "FAQ" },
@@ -39,7 +38,7 @@ const WEIGHT_LABELS: Record<keyof Weights, string> = {
 
 const INDUSTRY_OPTIONS: { value: Industry; label: string }[] = [
   { value: "SOFTWARE_B2B", label: "Software B2B" },
-  { value: "FINANZAS", label: "Finanzas" },
+  { value: "FINANZAS", label: "Servicios financieros" },
   { value: "CONSULTORIA", label: "Consultoría" },
   { value: "TELCO", label: "Telecom" },
   { value: "SEGUROS", label: "Seguros" },
@@ -76,18 +75,10 @@ export default function ScenarioDetailedScreen() {
   // identity
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [industry, setIndustry] = useState<Industry | "">("");
+  const [industries, setIndustries] = useState<Industry[]>([]);
   const [clientPersona, setClientPersona] = useState<ClientPersona | "">("");
   const [difficulty, setDifficulty] = useState<Difficulty | "">("");
   const [maxDurationMinutes, setMaxDurationMinutes] = useState(30);
-
-  // product
-  const [productName, setProductName] = useState("");
-  const [productDesc, setProductDesc] = useState("");
-  const [priceRange, setPriceRange] = useState("");
-  const [keyDiff, setKeyDiff] = useState("");
-  const [paymentInfo, setPaymentInfo] = useState("");
-  const [productTags, setProductTags] = useState<string[]>([]);
 
   // persona
   const [systemPrompt, setSystemPrompt] = useState("");
@@ -120,7 +111,12 @@ export default function ScenarioDetailedScreen() {
   const fetchContextLists = useCallback(() => {
     apiFetch("/api/empresa")
       .then(r => r.ok ? r.json() : null)
-      .then(e => { if (e?.id) setEmpresaList([{ id: e.id, name: e.name }]); })
+      .then(e => {
+        if (e?.id) {
+          setEmpresaList([{ id: e.id, name: e.name }]);
+          if (!isEdit) setIndustries(e.industries ?? []);
+        }
+      })
       .catch(() => { /* not critical — dropdowns just stay empty */ });
     apiFetch("/api/productos")
       .then(r => r.ok ? r.json() : [])
@@ -137,27 +133,16 @@ export default function ScenarioDetailedScreen() {
       .then(s => {
         setName(s.name ?? "");
         setDescription(s.description ?? "");
-        setIndustry(s.industry ?? "");
+        setIndustries(s.industries ?? []);
         setClientPersona(s.clientPersona ?? "");
         setDifficulty(s.difficulty ?? "");
         setMaxDurationMinutes(s.maxDurationMinutes ?? 30);
         setSystemPrompt(s.systemPrompt ?? "");
         setAvatarVoiceId(s.avatarVoiceId ?? "");
-        setPaymentInfo(s.paymentInfo ?? "");
         setVendedorRol(s.vendedorRol ?? "");
         setEscenarioObjetivo(s.escenarioObjetivo ?? "");
         setEmpresaId(s.empresaId ?? "");
         setProductoId(s.productoId ?? "");
-        try {
-          const pc = JSON.parse(s.productContext ?? "{}");
-          setProductName(pc.productName ?? "");
-          setProductDesc(pc.productDescription ?? "");
-          setPriceRange(pc.priceRange ?? "");
-          setKeyDiff(pc.keyDifferentiator ?? "");
-          setProductTags(pc.tags ?? []);
-        } catch {
-          setProductDesc(s.productContext ?? "");
-        }
         try { const o = JSON.parse(s.objectionsGuide ?? "[]"); setObjections(Array.isArray(o) ? o : []); } catch { setObjections([]); }
         try { const f = JSON.parse(s.faq ?? "[]"); setFaqItems(Array.isArray(f) ? f : []); } catch { setFaqItems([]); }
         try { const w = JSON.parse(s.evaluationWeights ?? "{}"); setWeights({ ...DEFAULT_WEIGHTS, ...w }); } catch { setWeights(DEFAULT_WEIGHTS); }
@@ -173,13 +158,11 @@ export default function ScenarioDetailedScreen() {
       description,
       clientPersona: clientPersona || "INDIFFERENT",
       difficulty: difficulty || "MEDIUM",
-      ...(industry ? { industry } : {}),
+      industries,
       maxDurationMinutes,
-      productContext: JSON.stringify({ productName, productDescription: productDesc, priceRange, keyDifferentiator: keyDiff, tags: productTags }),
       systemPrompt,
       objectionsGuide: JSON.stringify(objections),
       faq: JSON.stringify(faqItems),
-      paymentInfo,
       evaluationWeights: JSON.stringify(weights),
       forbiddenPhrases: JSON.stringify(forbiddenPhrases),
       avatarVoiceId,
@@ -292,7 +275,6 @@ export default function ScenarioDetailedScreen() {
   function isComplete(key: SectionKey): boolean {
     switch (key) {
       case "identity": return !!name.trim() && !!clientPersona && !!difficulty;
-      case "product": return !!productName.trim();
       case "persona": return wordCount >= 30;
       case "objections": return objections.length > 0;
       case "faq": return faqItems.length > 0;
@@ -395,8 +377,8 @@ export default function ScenarioDetailedScreen() {
                     {INDUSTRY_OPTIONS.map(o => (
                       <button
                         key={o.value}
-                        onClick={() => setIndustry(industry === o.value ? "" : o.value)}
-                        className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${industry === o.value
+                        onClick={() => setIndustries(prev => prev.includes(o.value) ? prev.filter(i => i !== o.value) : [...prev, o.value])}
+                        className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${industries.includes(o.value)
                             ? "border-accent bg-accent/20 text-white"
                             : "border-slate-700 bg-slate-800/50 text-slate-400 hover:border-slate-500"
                           }`}
@@ -510,41 +492,7 @@ export default function ScenarioDetailedScreen() {
                   </Field>
                 </div>
 
-                <NavButtons label="Siguiente: Contexto del producto →" onNext={() => setActiveSection("product")} />
-              </section>
-            )}
-
-            {/* 2. PRODUCTO */}
-            {activeSection === "product" && (
-              <section className="space-y-6">
-                <SectionHeader title="Contexto del producto" sub="Información que el vendedor puede consultar durante el entrenamiento." />
-
-                <Field label="Nombre del producto / servicio *">
-                  <input value={productName} onChange={e => setProductName(e.target.value)} placeholder="Ej: SalesForce CRM Pro" className="field-input" />
-                </Field>
-
-                <Field label="Descripción del producto">
-                  <textarea value={productDesc} onChange={e => setProductDesc(e.target.value)} rows={4} placeholder="¿Qué es, qué problema resuelve, para quién es?" className="field-input resize-none" />
-                </Field>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Field label="Rango de precio">
-                    <input value={priceRange} onChange={e => setPriceRange(e.target.value)} placeholder="USD 500–1200/mes" className="field-input" />
-                  </Field>
-                  <Field label="Diferencial clave">
-                    <input value={keyDiff} onChange={e => setKeyDiff(e.target.value)} placeholder="¿Por qué nos eligen?" className="field-input" />
-                  </Field>
-                </div>
-
-                <Field label="Formas de pago y financiación">
-                  <textarea value={paymentInfo} onChange={e => setPaymentInfo(e.target.value)} rows={2} placeholder="Anual con descuento 20%, mensual, 6 cuotas sin interés..." className="field-input resize-none" />
-                </Field>
-
-                <Field label="Tags / palabras clave">
-                  <TagInput tags={productTags} onChange={setProductTags} />
-                </Field>
-
-                <NavButtons onPrev={() => setActiveSection("identity")} label="Siguiente: Personalidad →" onNext={() => setActiveSection("persona")} />
+                <NavButtons label="Siguiente: Personalidad →" onNext={() => setActiveSection("persona")} />
               </section>
             )}
 
@@ -579,7 +527,7 @@ export default function ScenarioDetailedScreen() {
                   </div>
                 </div>
 
-                <NavButtons onPrev={() => setActiveSection("product")} label="Siguiente: Objeciones →" onNext={() => setActiveSection("objections")} />
+                <NavButtons onPrev={() => setActiveSection("identity")} label="Siguiente: Objeciones →" onNext={() => setActiveSection("objections")} />
               </section>
             )}
 
@@ -826,7 +774,7 @@ export default function ScenarioDetailedScreen() {
                 <div className="space-y-4">
                   <PreviewBlock label="Identidad">
                     <PreviewRow label="Nombre" value={name || "—"} />
-                    <PreviewRow label="Industria" value={industry || "—"} />
+                    <PreviewRow label="Industrias" value={industries.length > 0 ? industries.join(", ") : "—"} />
                     <PreviewRow label="Cliente" value={clientPersona || "—"} />
                     <PreviewRow label="Dificultad" value={difficulty || "—"} />
                     <PreviewRow label="Duración" value={`${maxDurationMinutes} min`} />
@@ -841,12 +789,7 @@ export default function ScenarioDetailedScreen() {
                     )}
                   </PreviewBlock>
 
-                  <PreviewBlock label="Producto">
-                    <PreviewRow label="Nombre" value={productName || "—"} />
-                    <PreviewRow label="Precio" value={priceRange || "—"} />
-                    <PreviewRow label="Diferencial" value={keyDiff || "—"} />
-                    {productTags.length > 0 && <PreviewRow label="Tags" value={productTags.join(", ")} />}
-                  </PreviewBlock>
+
 
                   <PreviewBlock label="System prompt">
                     <p className="text-xs text-slate-400 whitespace-pre-wrap font-mono leading-relaxed max-h-40 overflow-y-auto">

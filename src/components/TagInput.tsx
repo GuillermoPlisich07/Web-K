@@ -38,6 +38,12 @@ export default function TagInput({ tags, onChange }: Props) {
             setTagInput("");
           }
         }}
+        onBlur={() => {
+          if (tagInput.trim()) {
+            onChange([...tags, tagInput.trim()]);
+            setTagInput("");
+          }
+        }}
         placeholder="Escribí y presioná Enter para agregar..."
         className="field-input"
       />

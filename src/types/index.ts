@@ -10,9 +10,10 @@ export interface Scenario {
   description: string;
   clientPersona: ClientPersona;
   difficulty: Difficulty;
-  productContext?: string;
   /** Pure behaviour/persona profile of the client avatar */
   systemPrompt?: string;
+  /** The assembled XML-CREST system prompt returned by the backend */
+  compiledSystemPrompt?: string;
   vendedorRol?: string;
   escenarioObjetivo?: string;
   empresaId?: string;
@@ -20,8 +21,7 @@ export interface Scenario {
   avatarVoiceId?: string;
   objectionsGuide?: string;
   faq?: string;
-  paymentInfo?: string;
-  industry?: Industry;
+  industries?: Industry[];
   maxDurationMinutes?: number;
   evaluationWeights?: string;
   forbiddenPhrases?: string;
