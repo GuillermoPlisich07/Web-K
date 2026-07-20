@@ -1,19 +1,20 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ClientPersona, Difficulty, Industry, Scenario } from "../types";
+import { Pencil } from "lucide-react";
+import { ClientPersona, Difficulty, Scenario } from "../types";
 import { apiFetch } from "../services/apiClient";
+import { listProductos, Producto } from "../services/productsApi";
 import { INDUSTRIES } from "../lib/industries";
 
 type Step = "form" | "loading" | "review";
 
 interface FormData {
   name: string;
-  industry: Industry | "";
+  description: string;
   clientPersona: ClientPersona | "";
   difficulty: Difficulty | "";
-  productName: string;
-  priceRange: string;
-  keyDifferentiator: string;
+  productoId: string;
+  vendedorRol: string;
 }
 
 const PERSONAS: { value: ClientPersona; icon: string; label: string; desc: string }[] = [
@@ -43,11 +44,11 @@ export default function ScenarioExpressScreen() {
   const [apiError, setApiError] = useState("");
 
   const [form, setForm] = useState<FormData>({
-    name: "", industry: "", clientPersona: "", difficulty: "",
-    productName: "", priceRange: "", keyDifferentiator: "",
+    name: "", description: "", clientPersona: "", difficulty: "", productoId: "", vendedorRol: "Representante de Ventas"
   });
-  const [productDescription, setProductDescription] = useState("");
-  const [errors, setErrors] = useState<Partial<Record<keyof FormData | "productDescription", string>>>({});
+  const [products, setProducts] = useState<Producto[]>([]);
+  const [empresa, setEmpresa] = useState<{ id: string; name: string; industries: string[] } | null>(null);
+  const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
 
   const [scenario, setScenario] = useState<Scenario | null>(null);
   // Campos editables en revisión
@@ -67,16 +68,21 @@ export default function ScenarioExpressScreen() {
     return () => clearInterval(iv);
   }, [step]);
 
+  // Cargar productos y empresa
+  useEffect(() => {
+    listProductos().then(setProducts).catch(() => {});
+    apiFetch("/api/empresa")
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setEmpresa)
+      .catch(() => {});
+  }, []);
+
   function validate(): boolean {
     const e: typeof errors = {};
     if (!form.name.trim())            e.name = "Requerido";
-    if (!form.industry)               e.industry = "Seleccioná una industria";
     if (!form.clientPersona)          e.clientPersona = "Seleccioná un tipo de cliente";
     if (!form.difficulty)             e.difficulty = "Seleccioná dificultad";
-    if (!form.productName.trim())     e.productName = "Requerido";
-    if (!productDescription.trim())   e.productDescription = "Requerido";
-    if (!form.priceRange.trim())      e.priceRange = "Requerido";
-    if (!form.keyDifferentiator.trim()) e.keyDifferentiator = "Requerido";
+    if (!form.productoId)             e.productoId = "Seleccioná un producto";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -91,13 +97,11 @@ export default function ScenarioExpressScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name,
-          industry: form.industry,
+          description: form.description,
           clientPersona: form.clientPersona,
           difficulty: form.difficulty,
-          productName: form.productName,
-          productDescription,
-          priceRange: form.priceRange,
-          keyDifferentiator: form.keyDifferentiator,
+          productoId: form.productoId,
+          vendedorRol: form.vendedorRol,
         }),
       });
       if (!res.ok) {
@@ -149,17 +153,19 @@ export default function ScenarioExpressScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: scenario.name,
+          description: scenario.description,
           clientPersona: scenario.clientPersona,
           difficulty: scenario.difficulty,
-          industry: scenario.industry,
+          industries: scenario.industries,
           systemPrompt: editSystemPrompt,
-          productContext: scenario.productContext,
           objectionsGuide: JSON.stringify(editObjections),
           faq: JSON.stringify(editFaq),
           forbiddenPhrases: JSON.stringify(editForbidden),
-          paymentInfo: scenario.paymentInfo,
           avatarVoiceId: scenario.avatarVoiceId,
           maxDurationMinutes: scenario.maxDurationMinutes,
+          empresaId: scenario.empresaId,
+          productoId: scenario.productoId,
+          vendedorRol: scenario.vendedorRol
         }),
       });
       navigate("/scenarios");
@@ -207,24 +213,15 @@ export default function ScenarioExpressScreen() {
             </div>
           </Field>
 
-          {/* Industria */}
-          <Field label="Industria / Tipo de producto" error={errors.industry}>
-            <div className="flex flex-wrap gap-2">
-              {INDUSTRIES.map((ind) => (
-                <button
-                  key={ind.value}
-                  type="button"
-                  onClick={() => setForm({ ...form, industry: ind.value })}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-mono border transition-colors ${
-                    form.industry === ind.value
-                      ? "border-green-600 bg-green-950 text-green-300"
-                      : "border-slate-700 bg-[#10111e] text-slate-400 hover:border-slate-500"
-                  }`}
-                >
-                  {ind.label}
-                </button>
-              ))}
-            </div>
+          {/* Descripción */}
+          <Field label="Descripción breve (opcional)">
+            <textarea
+              rows={2}
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              placeholder="Contexto adicional para el vendedor..."
+              className={`${inputCls(false)} resize-none`}
+            />
           </Field>
 
           {/* Tipo de cliente */}
@@ -271,45 +268,62 @@ export default function ScenarioExpressScreen() {
             </div>
           </Field>
 
-          {/* Nombre del producto */}
-          <Field label="¿Qué vendés?" error={errors.productName}>
-            <textarea
-              rows={3}
-              value={productDescription}
-              onChange={(e) => setProductDescription(e.target.value)}
-              placeholder="Ej: Software de gestión de inventario en la nube para almacenes medianos"
-              className={`${inputCls(!!errors.productDescription)} resize-none`}
-            />
-            <input
-              type="text"
-              value={form.productName}
-              onChange={(e) => setForm({ ...form, productName: e.target.value })}
-              placeholder="Nombre corto del producto (Ej: InventCloud Pro)"
-              className={`${inputCls(!!errors.productName)} mt-2`}
-            />
+          {/* Rol del Vendedor */}
+          <Field label="Rol del Vendedor">
+            <div className="relative flex items-center">
+              <input
+                type="text"
+                value={form.vendedorRol}
+                onChange={(e) => setForm({ ...form, vendedorRol: e.target.value })}
+                placeholder="Ej: Representante de Ventas"
+                className={`${inputCls(false)} pr-10`}
+              />
+              <Pencil className="absolute right-3 w-4 h-4 text-slate-400 pointer-events-none" />
+            </div>
           </Field>
 
-          {/* Precio */}
-          <Field label="Precio o rango" error={errors.priceRange}>
-            <input
-              type="text"
-              value={form.priceRange}
-              onChange={(e) => setForm({ ...form, priceRange: e.target.value })}
-              placeholder='Ej: USD 500/mes por empresa'
-              className={inputCls(!!errors.priceRange)}
-            />
+          {/* Producto */}
+          <Field label="Producto / Servicio" error={errors.productoId}>
+            <select
+              value={form.productoId}
+              onChange={(e) => setForm({ ...form, productoId: e.target.value })}
+              className={inputCls(!!errors.productoId)}
+            >
+              <option value="">— Seleccioná un producto —</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            {products.length === 0 && (
+              <p className="text-xs text-slate-500 mt-2">No hay productos cargados en el sistema.</p>
+            )}
           </Field>
 
-          {/* Diferencial */}
-          <Field label="Principal diferencial" error={errors.keyDifferentiator}>
-            <input
-              type="text"
-              value={form.keyDifferentiator}
-              onChange={(e) => setForm({ ...form, keyDifferentiator: e.target.value })}
-              placeholder="Ej: Implementación en 48hs, sin costo de licencia inicial"
-              className={inputCls(!!errors.keyDifferentiator)}
-            />
-          </Field>
+          {/* Info de Duración Fija y Contexto */}
+          <div className="bg-[#10111e] border border-slate-800 rounded-lg p-5 space-y-3">
+            <div className="flex items-center gap-2 text-sm text-slate-200 font-semibold border-b border-slate-800 pb-2 mb-1">
+              <span>⏱️</span>
+              <span>Detalles del entrenamiento</span>
+            </div>
+            <div className="grid grid-cols-2 gap-y-2 text-xs">
+              <div><span className="text-slate-500">Empresa vinculada</span></div>
+              <div className="text-right text-slate-300 font-medium">{empresa?.name ?? "—"}</div>
+
+              <div><span className="text-slate-500">Industria(s)</span></div>
+              <div className="text-right text-slate-300 font-medium">
+                {empresa?.industries && empresa.industries.length > 0
+                  ? empresa.industries
+                      .map((code) => INDUSTRIES.find((ind) => ind.value === code)?.label || code)
+                      .join(", ")
+                  : "—"}
+              </div>
+
+              <div><span className="text-slate-500">Duración de práctica</span></div>
+              <div className="text-right text-green-400 font-semibold">15 minutos (inalterable)</div>
+            </div>
+          </div>
         </div>
 
         <button
@@ -380,9 +394,19 @@ export default function ScenarioExpressScreen() {
         <ReviewSection title="Identidad del escenario">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div><span className="text-slate-500">Nombre</span><p className="text-white mt-0.5">{scenario?.name}</p></div>
+            <div><span className="text-slate-500">Empresa vinculada</span><p className="text-white mt-0.5">{empresa?.name ?? "—"}</p></div>
+            <div>
+              <span className="text-slate-500">Industria(s)</span>
+              <p className="text-white mt-0.5">
+                {scenario?.industries && scenario.industries.length > 0
+                  ? scenario.industries
+                      .map((code) => INDUSTRIES.find((ind) => ind.value === code)?.label || code)
+                      .join(", ")
+                  : "—"}
+              </p>
+            </div>
             <div><span className="text-slate-500">Cliente</span><p className="text-white mt-0.5">{scenario?.clientPersona}</p></div>
             <div><span className="text-slate-500">Dificultad</span><p className="text-white mt-0.5">{scenario?.difficulty}</p></div>
-            <div><span className="text-slate-500">Industria</span><p className="text-white mt-0.5">{scenario?.industry ?? "—"}</p></div>
           </div>
         </ReviewSection>
 
