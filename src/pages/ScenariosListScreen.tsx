@@ -114,7 +114,7 @@ export default function ScenariosListScreen() {
   const filtered = useMemo(() => scenarios.filter((s) => {
     if (filterPersona    !== "ALL" && s.clientPersona !== filterPersona)    return false;
     if (filterDifficulty !== "ALL" && s.difficulty    !== filterDifficulty) return false;
-    if (filterIndustry   !== "ALL" && s.industry      !== filterIndustry)   return false;
+    if (filterIndustry   !== "ALL" && !s.industries?.includes(filterIndustry)) return false;
     return true;
   }), [scenarios, filterPersona, filterDifficulty, filterIndustry]);
 
@@ -363,7 +363,7 @@ function ScenarioCard({
 }) {
   const persona  = personaBadge[scenario.clientPersona];
   const diff     = difficultyBadge[scenario.difficulty];
-  const industry = scenario.industry ? (industryLabel[scenario.industry] ?? scenario.industry) : null;
+  const industryText = scenario.industries?.length ? scenario.industries.map(ind => industryLabel[ind] ?? ind).join(", ") : null;
   const isAI     = scenario.createdBy === "EXPRESS_AI";
 
   return (
@@ -395,9 +395,9 @@ function ScenarioCard({
         <span className={`text-xs px-2 py-0.5 rounded-full font-mono ${diff.color}`}>
           {diff.label}
         </span>
-        {industry && (
+        {industryText && (
           <span className="text-xs px-2 py-0.5 rounded-full font-mono bg-slate-800 text-slate-400 border border-slate-700">
-            {industry}
+            {industryText}
           </span>
         )}
         {/* Rol del vendedor badge */}

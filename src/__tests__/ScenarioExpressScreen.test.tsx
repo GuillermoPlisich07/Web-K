@@ -45,20 +45,23 @@ function renderScreen() {
 
 async function fillFormAndGenerate(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByPlaceholderText(/Ej: Venta de CRM/i), "Venta de CRM");
-  await user.click(screen.getByText("Software B2B"));
+  await user.type(screen.getByPlaceholderText(/Contexto adicional/i), "Descripción de prueba");
   await user.click(screen.getByText("Enojado"));
   await user.click(screen.getByText("Medio"));
-  await user.type(screen.getByPlaceholderText(/Software de gestión de inventario/i), "Un CRM");
-  await user.type(screen.getByPlaceholderText(/InventCloud Pro/i), "CRM Pro");
-  await user.type(screen.getByPlaceholderText(/USD 500/i), "USD 100/mes");
-  await user.type(screen.getByPlaceholderText(/Implementación en 48hs/i), "Rápido");
+  await user.selectOptions(screen.getByRole("combobox"), "prod-1");
   await user.click(screen.getByText("Generar escenario →"));
 }
 
 describe("ScenarioExpressScreen", () => {
   beforeEach(() => {
     useAuthStore.getState().clearSession();
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(generatedScenario)));
+    vi.stubGlobal("fetch", vi.fn().mockImplementation((url: string | URL | Request) => {
+      const urlStr = url.toString();
+      if (urlStr.includes("/api/productos")) {
+        return Promise.resolve(jsonResponse([{ id: "prod-1", name: "Producto Test" }]));
+      }
+      return Promise.resolve(jsonResponse(generatedScenario));
+    }));
   });
 
   afterEach(() => {
