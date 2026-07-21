@@ -93,7 +93,8 @@ export default function ScenarioDetailedScreen() {
   const [weights, setWeights] = useState<Weights>(DEFAULT_WEIGHTS);
 
   // voice
-  const [avatarVoiceId, setAvatarVoiceId] = useState("");
+  const [voiceId, setVoiceId] = useState("");
+  const [avatarId, setAvatarId] = useState("");
   const [forbiddenPhrases, setForbiddenPhrases] = useState<string[]>([]);
   const [phraseInput, setPhraseInput] = useState("");
   const [ttsLoading, setTtsLoading] = useState(false);
@@ -138,7 +139,8 @@ export default function ScenarioDetailedScreen() {
         setDifficulty(s.difficulty ?? "");
         setMaxDurationMinutes(s.maxDurationMinutes ?? 30);
         setSystemPrompt(s.systemPrompt ?? "");
-        setAvatarVoiceId(s.avatarVoiceId ?? "");
+        setVoiceId(s.voiceId ?? "");
+        setAvatarId(s.avatarId ?? "");
         setVendedorRol(s.vendedorRol ?? "");
         setEscenarioObjetivo(s.escenarioObjetivo ?? "");
         setEmpresaId(s.empresaId ?? "");
@@ -165,7 +167,8 @@ export default function ScenarioDetailedScreen() {
       faq: JSON.stringify(faqItems),
       evaluationWeights: JSON.stringify(weights),
       forbiddenPhrases: JSON.stringify(forbiddenPhrases),
-      avatarVoiceId,
+      voiceId,
+      avatarId,
       vendedorRol: vendedorRol || null,
       escenarioObjetivo: escenarioObjetivo || null,
       empresaId: empresaId || null,
@@ -238,14 +241,13 @@ export default function ScenarioDetailedScreen() {
   }
 
   async function handleTtsPreview() {
-    if (!avatarVoiceId.trim()) { setTtsError("Ingresá un Persona ID para escuchar la voz."); return; }
     setTtsLoading(true);
     setTtsError("");
     try {
       const res = await fetch(`${FASTAPI_URL}/tts/preview`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ voice_id: avatarVoiceId.trim(), persona: clientPersona || "DEMANDING" }),
+        body: JSON.stringify({ voice_id: voiceId.trim(), persona: clientPersona || "DEMANDING" }),
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
@@ -263,7 +265,7 @@ export default function ScenarioDetailedScreen() {
       src.connect(ctx.destination);
       src.start();
     } catch {
-      setTtsError("Error al previsualizar. Verificá que FastAPI esté corriendo y el Persona ID sea válido.");
+      setTtsError("Error al previsualizar. Verificá que FastAPI esté corriendo y el Voice ID sea válido.");
     } finally {
       setTtsLoading(false);
     }
@@ -279,7 +281,7 @@ export default function ScenarioDetailedScreen() {
       case "objections": return objections.length > 0;
       case "faq": return faqItems.length > 0;
       case "evaluation": return weightsTotal === 100;
-      case "voice": return !!avatarVoiceId.trim();
+      case "voice": return !!voiceId.trim();
       case "preview": return true;
     }
   }
@@ -729,24 +731,36 @@ export default function ScenarioDetailedScreen() {
             {/* 7. VOZ Y AVATAR */}
             {activeSection === "voice" && (
               <section className="space-y-6">
-                <SectionHeader title="Voz y avatar" sub="Configuración del avatar Tavus para este escenario." />
+                <SectionHeader title="Voz y avatar" sub="Configuración de la voz y avatar visual para este escenario." />
 
-                <Field label="Tavus Persona ID">
+                <Field label="ElevenLabs Voice ID">
                   <input
-                    value={avatarVoiceId}
-                    onChange={e => { setAvatarVoiceId(e.target.value); setTtsError(""); }}
-                    placeholder="pa_xxxxxxxxxxxxxxxxx"
+                    value={voiceId}
+                    onChange={e => { setVoiceId(e.target.value); setTtsError(""); }}
+                    placeholder="Ej. 21m00Tcm4TlvDq8ikWAM"
                     className="field-input font-mono"
                   />
                   <p className="text-xs text-slate-500 mt-1">
-                    ID de la persona en Tavus CVI. Dejá vacío para usar la persona por defecto según el tipo de cliente.
+                    ID de la voz en ElevenLabs. Dejá vacío para usar la voz por defecto según el tipo de cliente.
+                  </p>
+                </Field>
+
+                <Field label="Tavus Persona ID (Opcional - Fase 2)">
+                  <input
+                    value={avatarId}
+                    onChange={e => setAvatarId(e.target.value)}
+                    placeholder="pa_xxxxxxxxxxxxxxxxx"
+                    className="field-input font-mono opacity-70"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    ID del avatar visual en Tavus CVI.
                   </p>
                 </Field>
 
                 <div>
                   <button
                     onClick={handleTtsPreview}
-                    disabled={ttsLoading || !avatarVoiceId.trim()}
+                    disabled={ttsLoading}
                     className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed border border-slate-600 text-slate-200 text-sm px-4 py-2.5 rounded-xl transition-colors"
                   >
                     <span>{ttsLoading ? "⏳" : "▶"}</span>
@@ -754,17 +768,17 @@ export default function ScenarioDetailedScreen() {
                   </button>
                   {ttsError && <p className="text-red-400 text-xs mt-2">{ttsError}</p>}
                   <p className="text-xs text-slate-500 mt-1.5">
-                    Reproduce una frase de muestra con la voz del avatar. Requiere que FastAPI esté corriendo.
+                    Reproduce una frase de muestra con la voz. Requiere que FastAPI esté corriendo.
                   </p>
                 </div>
 
                 <div className="bg-[#0c0d18] border border-slate-700 rounded-xl p-5">
-                  <h4 className="text-sm font-semibold text-slate-300 mb-3">Personas por defecto (desde .env)</h4>
+                  <h4 className="text-sm font-semibold text-slate-300 mb-3">Voces por defecto (desde .env)</h4>
                   <div className="space-y-1.5">
                     {(["ANGRY", "DIFFICULT", "INDIFFERENT", "DEMANDING"] as ClientPersona[]).map(p => (
                       <div key={p} className="flex items-center justify-between text-xs font-mono">
                         <span className="text-slate-500">{p}</span>
-                        <span className="text-slate-400">TAVUS_PERSONA_{p}</span>
+                        <span className="text-slate-400">ELEVENLABS_VOICE_{p}</span>
                       </div>
                     ))}
                   </div>
