@@ -79,6 +79,14 @@ export default function SessionScreen() {
   useEffect(() => { pausedRef.current = paused; }, [paused]);
   useEffect(() => { isAvatarSpeakingRef.current = isAvatarSpeaking; }, [isAvatarSpeaking]);
 
+  const transcriptContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (transcriptContainerRef.current) {
+      transcriptContainerRef.current.scrollTop = transcriptContainerRef.current.scrollHeight;
+    }
+  }, [transcript, partialTranscript]);
+
   useEffect(() => {
     timerRef.current = setInterval(() => incrementElapsed(), 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
@@ -114,13 +122,22 @@ export default function SessionScreen() {
         setWsError(null);
         setIsAvatarSpeaking(true);
       } else if (msg.type === "avatar_audio_end") {
-        setIsAvatarSpeaking(false);
-        const at = avatarTextRef.current;
-        if (at) {
-          addTranscriptEntry({ turn: msg.turn || 0, speaker: "CLIENT", text: at });
-          avatarTextRef.current = "";
-          setAvatarText("");
+        const ctx = audioCtxRef.current;
+        let delayMs = 0;
+        if (ctx) {
+          // Calculate remaining time until the audio queue is empty
+          delayMs = Math.max(0, (nextAudioStartRef.current - ctx.currentTime) * 1000);
         }
+        
+        setTimeout(() => {
+          setIsAvatarSpeaking(false);
+          const at = avatarTextRef.current;
+          if (at) {
+            addTranscriptEntry({ turn: msg.turn || 0, speaker: "CLIENT", text: at });
+            avatarTextRef.current = "";
+            setAvatarText("");
+          }
+        }, delayMs + 300); // 300ms extra buffer to feel natural
       } else if (msg.type === "emotion_update") {
         setCurrentEmotion(msg.dominant || null);
       } else if (msg.type === "avatar_backchannel") {
@@ -438,9 +455,8 @@ export default function SessionScreen() {
       </div>
     );
   }
-
   return (
-    <div className="min-h-screen bg-[#07080d] text-white flex flex-col">
+    <div className="h-full overflow-hidden bg-[#07080d] text-white flex flex-col">
       <header className="border-b border-slate-800 px-6 py-3 flex items-center justify-between bg-[#0c0d18]">
         <div className="flex items-center gap-6">
           <div>
@@ -598,7 +614,7 @@ export default function SessionScreen() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div ref={transcriptContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3 scroll-smooth">
             <p className="text-xs text-slate-500 font-mono uppercase tracking-wider mb-2">Transcripcion</p>
             {transcript.map((t, i) => (
               <div key={i} className={`text-sm rounded-lg px-3 py-2 ${
