@@ -18,7 +18,8 @@ export interface Scenario {
   escenarioObjetivo?: string;
   empresaId?: string;
   productoId?: string;
-  avatarVoiceId?: string;
+  voiceId?: string;
+  avatarId?: string;
   objectionsGuide?: string;
   faq?: string;
   industries?: Industry[];
