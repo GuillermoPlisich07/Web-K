@@ -4,6 +4,14 @@ export type Industry = "SOFTWARE_B2B" | "FINANZAS" | "CONSULTORIA" | "TELCO" | "
 export type SessionStatus = "ACTIVE" | "COMPLETED" | "ABANDONED";
 export type Speaker = "VENDOR" | "CLIENT";
 
+export interface ScenarioPhase {
+  id?: string;
+  name: string;
+  description?: string;
+  orderIndex: number;
+  estimatedTimeMinutes?: number;
+}
+
 export interface Scenario {
   id: string;
   name: string;
@@ -18,6 +26,7 @@ export interface Scenario {
   escenarioObjetivo?: string;
   empresaId?: string;
   productoId?: string;
+  phases?: ScenarioPhase[];
   voiceId?: string;
   avatarId?: string;
   objectionsGuide?: string;
@@ -73,6 +82,7 @@ export interface SessionReport {
   scorePronunciation: number;
   generatedAt: string;
   session?: Session;
+  simulationEvents?: string;
 }
 
 export interface WsMessage {

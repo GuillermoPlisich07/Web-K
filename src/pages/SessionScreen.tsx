@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiFetch } from "../services/apiClient";
 import { useSessionStore } from "../store/sessionStore";
 import { FaceAnalyzer, type FaceMetrics } from "../services/FaceAnalyzer";
 import audioProcessorUrl from "../audio/audio-processor.js?url";
@@ -76,6 +77,21 @@ export default function SessionScreen() {
   const [smileIntensity, setSmileIntensity] = useState<number>(0);
   const [backchannelIndicator, setBackchannelIndicator] = useState<string | null>(null);
 
+  const [phases, setPhases] = useState<any[]>([]);
+  const [activePhaseIndex, setActivePhaseIndex] = useState(1);
+  const [alerts, setAlerts] = useState<{ id: number; message: string; visible: boolean }[]>([]);
+
+  useEffect(() => {
+    if (scenarioId) {
+      apiFetch(`/api/scenarios/${scenarioId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.phases) setPhases(data.phases.sort((a: any, b: any) => a.orderIndex - b.orderIndex));
+        })
+        .catch(console.error);
+    }
+  }, [scenarioId]);
+
   useEffect(() => { pausedRef.current = paused; }, [paused]);
   useEffect(() => { isAvatarSpeakingRef.current = isAvatarSpeaking; }, [isAvatarSpeaking]);
 
@@ -145,6 +161,14 @@ export default function SessionScreen() {
         setBackchannelIndicator(text);
         setTimeout(() => setBackchannelIndicator(null), 1500);
         if (audio_base64) playBackchannelAudio(audio_base64);
+      } else if (msg.type === "PHASE_TRANSITION") {
+        setActivePhaseIndex(msg.newPhaseIndex);
+      } else if (msg.type === "ALERT") {
+        const id = Date.now();
+        setAlerts(prev => [...prev, { id, message: msg.message, visible: true }]);
+        setTimeout(() => {
+          setAlerts(prev => prev.map(a => a.id === id ? { ...a, visible: false } : a));
+        }, 6000);
       } else if (msg.type === "error") {
         setWsError(msg.message || "Error desconocido del servidor");
         setIsAvatarSpeaking(false);
@@ -524,7 +548,41 @@ export default function SessionScreen() {
         </div>
       )}
 
-      <div className="flex-1 flex overflow-hidden">
+      {/* Fases Stepper */}
+      {phases.length > 0 && (
+        <div className="bg-[#090a10] border-b border-slate-800 px-6 py-3 flex items-center gap-2 overflow-x-auto">
+          {phases.map((p, i) => {
+            const isActive = p.orderIndex === activePhaseIndex;
+            const isPast = p.orderIndex < activePhaseIndex;
+            return (
+              <div key={p.id} className="flex items-center">
+                <div className={`flex flex-col justify-center px-4 py-1.5 rounded-full border text-xs font-mono whitespace-nowrap transition-colors ${
+                  isActive ? "bg-accent/20 border-accent text-accent" : 
+                  isPast ? "bg-green-900/30 border-green-700 text-green-400" : 
+                  "bg-slate-800/30 border-slate-700 text-slate-500"
+                }`}>
+                  <span className="font-bold">Fase {p.orderIndex}: {p.name}</span>
+                </div>
+                {i < phases.length - 1 && (
+                  <div className={`w-6 h-0.5 mx-2 ${isPast ? "bg-green-700" : "bg-slate-700"}`} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Toasts de Alertas */}
+        <div className="absolute top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
+          {alerts.filter(a => a.visible).map(alert => (
+            <div key={alert.id} className="bg-red-950/90 border border-red-700 text-red-200 px-4 py-3 rounded-lg shadow-lg flex items-start max-w-sm animate-in slide-in-from-right fade-in pointer-events-auto">
+              <span className="mr-2 mt-0.5">⚠️</span>
+              <p className="text-sm">{alert.message}</p>
+            </div>
+          ))}
+        </div>
+
         {/* Avatar */}
         <div className="flex-1 flex flex-col items-center justify-center bg-[#07080d] border-r border-slate-800 p-8">
           <div className={`w-full max-w-md aspect-video rounded-2xl border overflow-hidden ${

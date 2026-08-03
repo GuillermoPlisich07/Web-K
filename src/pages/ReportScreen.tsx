@@ -52,6 +52,7 @@ interface SessionReport {
   peakConfidenceTurn?: number;
   // Sugerencias por turno
   turnSuggestions?: string;
+  simulationEvents?: string;
 }
 
 interface VerbalAnalysis {
@@ -157,6 +158,12 @@ function parseJson<T>(raw: string | undefined): T | null {
 
 function parseList(raw: string): string[] {
   try { return JSON.parse(raw) || []; } catch { return []; }
+}
+
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 export default function ReportScreen() {
@@ -266,6 +273,11 @@ export default function ReportScreen() {
   const fillerData = (va?.top_fillers || []).slice(0, 8).map((f) => ({
     word: `"${f.word}"`, count: f.count, cat: f.category,
   }));
+
+  const simEvents = parseJson<any[]>(report.simulationEvents) || [];
+  const phaseEvents = simEvents.filter(e => e.type === "PHASE_TRANSITION");
+  const alertEvents = simEvents.filter(e => e.type === "ALERT");
+  const firstEventTs = simEvents.length > 0 ? simEvents[0].timestampMs : 0;
 
   return (
     <div className="min-h-screen bg-[#07080d] text-white">
@@ -778,6 +790,51 @@ export default function ReportScreen() {
                   <p className="text-xs text-slate-600">óptimo &lt; 4</p>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Simulación: Fases y Alertas */}
+        {simEvents.length > 0 && (
+          <div className="bg-[#0c0d18] border border-slate-800 rounded-2xl p-6">
+            <h2 className="font-bold text-white mb-4">Progreso de Fases y Alertas (Tiempo Real)</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-sm font-mono text-slate-400 mb-3">Transiciones de Fase</h3>
+                {phaseEvents.length > 0 ? (
+                  <div className="space-y-3">
+                    {phaseEvents.map((e, i) => (
+                      <div key={i} className="flex items-center gap-3 bg-slate-800/40 rounded-lg p-3">
+                        <span className="text-xs font-mono text-slate-500 w-12">{formatTime(Math.max(0, Math.floor((e.timestampMs - firstEventTs)/1000)))}</span>
+                        <div className="flex-1">
+                          <p className="text-sm text-green-400 font-bold font-mono">Fase {e.phase}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-500 font-mono">No se registraron cambios de fase.</p>
+                )}
+              </div>
+              <div>
+                <h3 className="text-sm font-mono text-slate-400 mb-3">Alertas disparadas</h3>
+                {alertEvents.length > 0 ? (
+                  <div className="space-y-3">
+                    {alertEvents.map((e, i) => (
+                      <div key={i} className="flex items-start gap-3 bg-red-950/30 border border-red-900/40 rounded-lg p-3">
+                        <span className="text-xs font-mono text-red-400/50 w-12 mt-0.5">{formatTime(Math.max(0, Math.floor((e.timestampMs - firstEventTs)/1000)))}</span>
+                        <div className="flex-1">
+                          <p className="text-sm text-red-300">⚠️ {e.message}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-green-950/30 border border-green-900/40 rounded-lg p-3">
+                    <p className="text-sm text-green-400 font-mono">✓ Excelente, no se dispararon alertas.</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
