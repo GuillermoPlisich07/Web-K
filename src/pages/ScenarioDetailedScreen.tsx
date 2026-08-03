@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ClientPersona, Difficulty, Industry } from "../types";
+import { ClientPersona, Difficulty, Industry, ScenarioPhase } from "../types";
 import { apiFetch } from "../services/apiClient";
 import TagInput from "../components/TagInput";
 // ── Local helper types ────────────────────────────────────────────────────────
@@ -10,10 +10,11 @@ interface ProductoOption { id: string; name: string }
 
 const FASTAPI_URL = import.meta.env.VITE_FASTAPI_URL ?? "http://localhost:8000";
 
-type SectionKey = "identity" | "persona" | "objections" | "faq" | "evaluation" | "voice" | "preview";
+type SectionKey = "identity" | "phases" | "persona" | "objections" | "faq" | "evaluation" | "voice" | "preview";
 
 const SECTIONS: { key: SectionKey; label: string }[] = [
   { key: "identity", label: "Identidad" },
+  { key: "phases", label: "Fases de la Reunión" },
   { key: "persona", label: "Personalidad del cliente" },
   { key: "objections", label: "Objeciones" },
   { key: "faq", label: "FAQ" },
@@ -80,6 +81,9 @@ export default function ScenarioDetailedScreen() {
   const [difficulty, setDifficulty] = useState<Difficulty | "">("");
   const [maxDurationMinutes, setMaxDurationMinutes] = useState(30);
 
+  // phases
+  const [phases, setPhases] = useState<ScenarioPhase[]>([]);
+
   // persona
   const [systemPrompt, setSystemPrompt] = useState("");
 
@@ -145,6 +149,7 @@ export default function ScenarioDetailedScreen() {
         setEscenarioObjetivo(s.escenarioObjetivo ?? "");
         setEmpresaId(s.empresaId ?? "");
         setProductoId(s.productoId ?? "");
+        setPhases(s.phases ?? []);
         try { const o = JSON.parse(s.objectionsGuide ?? "[]"); setObjections(Array.isArray(o) ? o : []); } catch { setObjections([]); }
         try { const f = JSON.parse(s.faq ?? "[]"); setFaqItems(Array.isArray(f) ? f : []); } catch { setFaqItems([]); }
         try { const w = JSON.parse(s.evaluationWeights ?? "{}"); setWeights({ ...DEFAULT_WEIGHTS, ...w }); } catch { setWeights(DEFAULT_WEIGHTS); }
@@ -173,6 +178,7 @@ export default function ScenarioDetailedScreen() {
       escenarioObjetivo: escenarioObjetivo || null,
       empresaId: empresaId || null,
       productoId: productoId || null,
+      phases,
     };
   }
 
@@ -249,7 +255,11 @@ export default function ScenarioDetailedScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ voice_id: voiceId.trim(), persona: clientPersona || "DEMANDING" }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+        const detailMsg = typeof errJson?.detail === "string" ? errJson.detail : JSON.stringify(errJson?.detail ?? "");
+        throw new Error(detailMsg || `Error HTTP ${res.status} al solicitar la previsualización.`);
+      }
       const data = await res.json();
       const raw = atob(data.audio_base64);
       const pcm = new Int16Array(raw.length / 2);
@@ -264,8 +274,8 @@ export default function ScenarioDetailedScreen() {
       src.buffer = buffer;
       src.connect(ctx.destination);
       src.start();
-    } catch {
-      setTtsError("Error al previsualizar. Verificá que FastAPI esté corriendo y el Voice ID sea válido.");
+    } catch (err: any) {
+      setTtsError(err?.message || "Error al previsualizar. Verificá que FastAPI esté corriendo y el Voice ID sea válido.");
     } finally {
       setTtsLoading(false);
     }
@@ -277,6 +287,7 @@ export default function ScenarioDetailedScreen() {
   function isComplete(key: SectionKey): boolean {
     switch (key) {
       case "identity": return !!name.trim() && !!clientPersona && !!difficulty;
+      case "phases": return phases.length > 0 && phases.every(p => p.name.trim() !== "");
       case "persona": return wordCount >= 30;
       case "objections": return objections.length > 0;
       case "faq": return faqItems.length > 0;
@@ -502,7 +513,86 @@ export default function ScenarioDetailedScreen() {
                   </Field>
                 </div>
 
-                <NavButtons label="Siguiente: Personalidad →" onNext={() => setActiveSection("persona")} />
+                <NavButtons label="Siguiente: Fases →" onNext={() => setActiveSection("phases")} />
+              </section>
+            )}
+
+            {/* 2. FASES DE LA REUNION */}
+            {activeSection === "phases" && (
+              <section className="space-y-6">
+                <div className="flex items-start justify-between">
+                  <SectionHeader title="Fases de la Reunión" sub="Define la secuencia de etapas por las que debe pasar la conversación." />
+                </div>
+                
+                <div className="space-y-3">
+                  {phases.map((p, i) => (
+                    <div key={i} className="bg-[#0c0d18] border border-slate-700 rounded-xl p-4 space-y-3 relative group">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-mono text-slate-500">Fase #{i + 1}</span>
+                        <div className="flex gap-2">
+                          <button onClick={() => {
+                            if (i > 0) {
+                              const newPhases = [...phases];
+                              [newPhases[i - 1], newPhases[i]] = [newPhases[i], newPhases[i - 1]];
+                              newPhases.forEach((phase, idx) => phase.orderIndex = idx + 1);
+                              setPhases(newPhases);
+                            }
+                          }} disabled={i === 0} className="text-xs text-slate-500 hover:text-white disabled:opacity-30">↑</button>
+                          <button onClick={() => {
+                            if (i < phases.length - 1) {
+                              const newPhases = [...phases];
+                              [newPhases[i + 1], newPhases[i]] = [newPhases[i], newPhases[i + 1]];
+                              newPhases.forEach((phase, idx) => phase.orderIndex = idx + 1);
+                              setPhases(newPhases);
+                            }
+                          }} disabled={i === phases.length - 1} className="text-xs text-slate-500 hover:text-white disabled:opacity-30">↓</button>
+                          <button onClick={() => {
+                            const newPhases = phases.filter((_, j) => j !== i);
+                            newPhases.forEach((phase, idx) => phase.orderIndex = idx + 1);
+                            setPhases(newPhases);
+                          }} className="text-xs text-slate-500 hover:text-red-400 ml-2">Eliminar</button>
+                        </div>
+                      </div>
+                      <input
+                        value={p.name}
+                        onChange={e => setPhases(phases.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}
+                        placeholder="Nombre de la fase (ej: Contacto inicial, Calificación...)"
+                        className="field-input text-sm font-semibold"
+                      />
+                      <textarea
+                        value={p.description ?? ""}
+                        onChange={e => setPhases(phases.map((x, j) => j === i ? { ...x, description: e.target.value } : x))}
+                        placeholder="Descripción para el vendedor (opcional)..."
+                        rows={2}
+                        className="field-input text-sm resize-none"
+                      />
+                      <div className="flex items-center gap-3">
+                        <label className="text-xs text-slate-500">Tiempo estimado (minutos):</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={p.estimatedTimeMinutes ?? ""}
+                          onChange={e => setPhases(phases.map((x, j) => j === i ? { ...x, estimatedTimeMinutes: parseInt(e.target.value) || undefined } : x))}
+                          className="field-input text-sm w-20"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  {phases.length === 0 && (
+                    <div className="text-center py-6 border border-dashed border-slate-700 rounded-xl">
+                      <p className="text-sm text-slate-500">No hay fases configuradas.</p>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => setPhases([...phases, { name: "", description: "", orderIndex: phases.length + 1, estimatedTimeMinutes: 3 }])}
+                  className="w-full py-3 border border-dashed border-slate-700 hover:border-slate-500 text-slate-400 hover:text-slate-200 rounded-xl text-sm transition-colors"
+                >
+                  + Agregar fase
+                </button>
+
+                <NavButtons onPrev={() => setActiveSection("identity")} label="Siguiente: Personalidad →" onNext={() => setActiveSection("persona")} />
               </section>
             )}
 
@@ -537,7 +627,7 @@ export default function ScenarioDetailedScreen() {
                   </div>
                 </div>
 
-                <NavButtons onPrev={() => setActiveSection("identity")} label="Siguiente: Objeciones →" onNext={() => setActiveSection("objections")} />
+                <NavButtons onPrev={() => setActiveSection("phases")} label="Siguiente: Objeciones →" onNext={() => setActiveSection("objections")} />
               </section>
             )}
 
@@ -809,6 +899,18 @@ export default function ScenarioDetailedScreen() {
                     {productoId && productoList.find(p => p.id === productoId) && (
                       <PreviewRow label="Producto" value={productoList.find(p => p.id === productoId)!.name} />
                     )}
+                  </PreviewBlock>
+
+                  <PreviewBlock label={`Fases de la Reunión (${phases.length})`}>
+                    {phases.length === 0
+                      ? <p className="text-xs text-slate-500">Sin fases definidas.</p>
+                      : phases.map((p, i) => (
+                        <div key={i} className="border-b border-slate-700/50 pb-2 mb-2 last:border-0 last:pb-0 last:mb-0">
+                          <p className="text-xs text-slate-300 font-semibold">{p.name || "—"}</p>
+                          {p.description && <p className="text-xs text-slate-500 mt-0.5">{p.description}</p>}
+                        </div>
+                      ))
+                    }
                   </PreviewBlock>
 
 
