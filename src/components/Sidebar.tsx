@@ -2,15 +2,49 @@ import { Link, useLocation } from "react-router-dom";
 import { LogOut, Flame, ChevronRight } from "lucide-react";
 import { NAV_ITEMS, NAV_SECTIONS, isNavItemActive, isNavItemVisible, type Role } from "../config/nav";
 import { GRAD } from "../lib/theme";
+import { useAuthStore } from "../store/authStore";
 
 interface Props {
   role: Role;
   onLogout: () => void;
 }
 
+function getDisplayName(firstName?: string | null, lastName?: string | null, email?: string | null): string {
+  const fn = firstName?.trim() ?? "";
+  const ln = lastName?.trim() ?? "";
+  if (fn && ln) return `${fn} ${ln}`;
+  if (fn) return fn;
+  if (ln) return ln;
+  if (email && email.trim()) {
+    const prefix = email.split("@")[0]?.trim();
+    if (prefix) return prefix;
+  }
+  return "Usuario";
+}
+
+function getInitials(firstName?: string | null, lastName?: string | null, email?: string | null): string {
+  const fn = firstName?.trim() ?? "";
+  const ln = lastName?.trim() ?? "";
+  if (fn && ln) return `${fn[0]}${ln[0]}`.toUpperCase();
+  if (fn) return fn[0].toUpperCase();
+  if (ln) return ln[0].toUpperCase();
+  if (email && email.trim()) {
+    const prefix = email.split("@")[0]?.trim();
+    if (prefix && prefix.length > 0) return prefix[0].toUpperCase();
+  }
+  return "U";
+}
+
 export default function Sidebar({ role, onLogout }: Props) {
   const location = useLocation();
   const visibleItems = NAV_ITEMS.filter((item) => isNavItemVisible(item, role));
+  const firstName = useAuthStore((s) => s.firstName);
+  const lastName = useAuthStore((s) => s.lastName);
+  const email = useAuthStore((s) => s.email);
+  const avatarUrl = useAuthStore((s) => s.avatarUrl);
+
+  const displayName = getDisplayName(firstName, lastName, email);
+  const initials = getInitials(firstName, lastName, email);
 
   return (
     <aside
@@ -117,14 +151,24 @@ export default function Sidebar({ role, onLogout }: Props) {
         style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 12 }}
       >
         <div className="flex items-center gap-2.5 px-2">
-          <div
-            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-            style={{ background: GRAD }}
-          >
-            CM
-          </div>
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt={displayName}
+              className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+            />
+          ) : (
+            <div
+              className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+              style={{ background: GRAD }}
+            >
+              {initials}
+            </div>
+          )}
           <div className="flex-1 min-w-0">
-            <div className="text-xs font-semibold text-white truncate">Carlos Mendoza</div>
+            <div className="text-xs font-semibold text-white truncate" title={displayName}>
+              {displayName}
+            </div>
             <div className="text-[10px] truncate" style={{ color: "#7F8899" }}>
               SDR · Level 14
             </div>

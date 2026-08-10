@@ -25,6 +25,9 @@ export function useAuthBootstrap(): void {
           role: data.role as Role,
           email: data.email,
           profileCompleted: data.profileCompleted,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          avatarUrl: data.avatarUrl,
         });
       } else {
         clearSession();

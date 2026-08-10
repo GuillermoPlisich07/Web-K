@@ -44,6 +44,9 @@ export default function LoginPage() {
         role: data.role as Role,
         email: data.email,
         profileCompleted: data.profileCompleted,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        avatarUrl: data.avatarUrl,
       });
       navigate("/", { replace: true });
     } catch (err) {
