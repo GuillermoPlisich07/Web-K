@@ -9,6 +9,9 @@ export interface AuthResponse {
   email: string;
   role: string;
   profileCompleted: boolean;
+  firstName?: string | null;
+  lastName?: string | null;
+  avatarUrl?: string | null;
 }
 
 export type LoginErrorKind = "invalid_credentials" | "account_disabled" | "server_error";
@@ -99,6 +102,9 @@ function refreshAccessToken(): Promise<string | null> {
           role: data.role as Role,
           email: data.email,
           profileCompleted: data.profileCompleted,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          avatarUrl: data.avatarUrl,
         });
         return data.accessToken;
       })
